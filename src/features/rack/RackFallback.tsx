@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Product } from '@/core/catalog/schema';
 import { formatPrice } from '@/core/pricing/formatPrice';
 import { ProductSilhouette } from './ProductSilhouette';
@@ -15,7 +16,11 @@ export function RackFallback({ products }: { products: Product[] }) {
             <ProductSilhouette color={product.originalDesign.fabricColor} />
           </div>
           <p className="mt-4 text-eyebrow uppercase tracking-eyebrow text-muted">{product.category}</p>
-          <h2 className="mt-1 font-display text-3xl leading-tight">{product.name}</h2>
+          <h2 className="mt-1 font-display text-3xl leading-tight">
+            <Link href={`/preview/${product.slug}`} className="underline-offset-4 hover:underline">
+              {product.name}
+            </Link>
+          </h2>
           <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{product.description}</p>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-medium">{formatPrice(product.basePriceMinor, product.currency)}</span>

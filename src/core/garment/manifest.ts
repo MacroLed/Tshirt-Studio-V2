@@ -25,7 +25,14 @@ export const garmentManifestSchema = z.object({
   garmentId: z.string().min(1),
   fit: z.enum(['regular', 'oversized', 'slim', 'long_sleeve']),
   version: z.number().int().positive(),
-  files: z.object({ hanging: z.string().min(1), display: z.string().min(1).nullable() }),
+  files: z.object({
+    hanging: z.string().min(1),
+    display: z.string().min(1).nullable(),
+    /** Mapa wysokości ze ściegami i prążkami w UV0. */
+    detailMap: z.string().min(1),
+    /** Wypalone zacienienie fałd w UV0. */
+    aoMap: z.string().min(1),
+  }),
   placements: z.record(placementIdSchema, placementManifestSchema),
 });
 export type GarmentManifest = z.infer<typeof garmentManifestSchema>;

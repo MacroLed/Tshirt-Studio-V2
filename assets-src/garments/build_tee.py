@@ -652,9 +652,65 @@ def polish_seams(obj, builder, sigma=2.0, radius_cm=3.0, iterations=6):
         np.add.at(total, edges[:, 1], co[edges[:, 0]])
         co += 0.5 * weight[:, None] * (total / degree[:, None] - co)
 
+    crossings = separate_layers(co, builder, distance)
     mesh.vertices.foreach_set("co", co.ravel())
     mesh.update()
     print(f"[polish] ząbkowanie szwów: {before:.3f} mm -> {after:.3f} mm", flush=True)
+    print(f"[polish] przenikające pary wierzchołków przód/tył: {crossings}", flush=True)
+
+
+def separate_layers(co, builder, seam_distance, max_gap_cm=0.5, gap_per_cm=0.15):
+    """Rozsuwa przód i tył tam, gdzie się przenikają lub stykają. Przód patrzy na -Y.
+
+    Przy szwach kolizje własne są wyłączone, więc warstwy mogą się tam przeciąć,
+    co w renderze wygląda jak jasne kreski wzdłuż szwu. Wykroje mają wspólną siatkę,
+    więc parę stanowią wierzchołki o tych samych współrzędnych płaskich.
+    """
+    crossings = 0
+    for vertex_key, old_front in builder.vertices.items():
+        layer, key = vertex_key
+        if layer != 1 or old_front not in builder.compact:
+            continue
+        old_back = builder.vertices.get((-1, key))
+        if old_back is None or old_back not in builder.compact:
+            continue
+        front, back = builder.compact[old_front], builder.compact[old_back]
+        gap = co[back][1] - co[front][1]
+        if gap <= 0.0:
+            crossings += 1
+        wanted = min(max_gap_cm, gap_per_cm * float(seam_distance[front])) * CM
+        if gap < wanted:
+            middle = (co[back][1] + co[front][1]) / 2.0
+            co[front][1] = middle - wanted / 2.0
+            co[back][1] = middle + wanted / 2.0
+    return crossings
+
+
+def bake_ambient_occlusion(obj, path, size=2048, samples=128):
+    """Wypala zacienienie w UV0. W przeglądarce to ono nadaje fałdom głębię bez kosztu w czasie pracy."""
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = enable_gpu()
+    scene.cycles.samples = samples
+    image = bpy.data.images.new("ao", size, size, alpha=False)
+    image.colorspace_settings.name = "Non-Color"
+    bake_nodes = []
+    for material in obj.data.materials:
+        node = material.node_tree.nodes.new("ShaderNodeTexImage")
+        node.image = image
+        material.node_tree.nodes.active = node
+        bake_nodes.append((material, node))
+    obj.data.uv_layers["UVMap"].active = True
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.bake(type="AO", margin=16, use_clear=True, use_selected_to_active=False)
+    image.filepath_raw = path
+    image.file_format = "PNG"
+    image.save()
+    for material, node in bake_nodes:
+        material.node_tree.nodes.remove(node)
+    print(f"[bake] AO zapisane: {path}", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -996,6 +1052,7 @@ def main():
 
     detail = build_detail_map(builder, os.path.join(args.out, "detail_height.png"))
     assign_materials(tee, pattern, detail)
+    bake_ambient_occlusion(tee, os.path.join(args.out, "ao.png"))
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(args.out, "tee_hanging.blend"))
     export_glb(tee, os.path.join(args.out, "hanging.glb"))
     if not args.no_render:

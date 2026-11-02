@@ -92,7 +92,7 @@ const SPECS: ProductSpec[] = [
     category: 'Typografia',
     price: 14900,
     fabric: 'white',
-    colors: ['white', 'sand', 'charcoal'],
+    colors: ['white', 'sand'],
     elements: { front: [text('t1', { content: 'Atelier', yMm: 90, fontSizeMm: 34, color: '#1A1917' })] },
   },
   {
@@ -103,7 +103,7 @@ const SPECS: ProductSpec[] = [
     category: 'Typografia',
     price: 15900,
     fabric: 'charcoal',
-    colors: ['charcoal', 'navy', 'white'],
+    colors: ['charcoal', 'navy', 'forest'],
     elements: { front: [text('t1', { content: 'Nocturne', yMm: 190, fontSizeMm: 62, color: '#EDEAE3' })] },
   },
   {
@@ -114,7 +114,7 @@ const SPECS: ProductSpec[] = [
     category: 'Minimalizm',
     price: 14900,
     fabric: 'forest',
-    colors: ['forest', 'sand', 'white'],
+    colors: ['forest', 'charcoal'],
     elements: {
       front: [text('t1', { content: 'Las', yMm: 110, fontSizeMm: 70, color: '#C9B999' })],
       back: [text('t2', { content: 'No. 07', yMm: 60, fontSizeMm: 20, color: '#C9B999' })],
@@ -141,7 +141,7 @@ const SPECS: ProductSpec[] = [
     category: 'Wzory sportowe',
     price: 15900,
     fabric: 'navy',
-    colors: ['navy', 'white', 'charcoal'],
+    colors: ['navy', 'charcoal', 'oxblood'],
     elements: {
       front: [
         text('t1', { content: 'MARINE', yMm: 150, fontSizeMm: 48, color: '#EDEAE3', fontId: 'hanken-grotesk', fontWeight: 800 }),
@@ -171,7 +171,7 @@ const SPECS: ProductSpec[] = [
     category: 'Logo',
     price: 13900,
     fabric: 'charcoal',
-    colors: ['charcoal', 'white', 'forest'],
+    colors: ['charcoal', 'forest', 'navy'],
     elements: {
       front: [text('t1', { content: 'studio', yMm: 85, fontSizeMm: 22, color: '#EDEAE3', fontId: 'hanken-grotesk', fontWeight: 500 })],
     },

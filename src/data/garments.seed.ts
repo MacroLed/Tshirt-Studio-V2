@@ -10,7 +10,12 @@ export const garmentsSeed = [
     garmentId: 'regular',
     fit: 'regular',
     version: 1,
-    files: { hanging: '/models/regular/hanging.glb', display: null },
+    files: {
+      hanging: '/models/regular/hanging.glb',
+      display: null,
+      detailMap: '/models/regular/detail-2k.webp',
+      aoMap: '/models/regular/ao-2k.webp',
+    },
     placements: {
       front: {
         meshName: 'panel_front',

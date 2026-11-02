@@ -18,8 +18,8 @@ export default async function HomePage() {
           </h1>
           <div className="mt-6 max-w-xl">
             <PrototypeNotice>
-              Produkty i ceny są przykładowe, a zakup nie jest jeszcze możliwy. Wieszak 3D zastąpi ten widok w kolejnych
-              krokach.
+              Produkty i ceny są przykładowe, a zakup nie jest jeszcze możliwy. Kliknij nazwę produktu, aby zobaczyć
+              koszulkę 3D. Wieszak 3D zastąpi ten widok w kolejnych krokach.
             </PrototypeNotice>
           </div>
         </section>

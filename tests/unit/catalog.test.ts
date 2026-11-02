@@ -23,6 +23,37 @@ describe('dane katalogu', () => {
   });
 });
 
+/** Współczynnik kontrastu WCAG między dwoma kolorami #RRGGBB. */
+function contrastRatio(first: string, second: string): number {
+  const luminance = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((start) => {
+      const channel = parseInt(hex.slice(start, start + 2), 16) / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    }) as [number, number, number];
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [lighter, darker] = [luminance(first), luminance(second)].sort((x, y) => y - x) as [number, number];
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+describe('wzory są czytelne', () => {
+  it('nadruk jest widoczny na każdym kolorze oferowanym dla produktu', () => {
+    for (const product of catalogSchema.parse(catalogSeed)) {
+      for (const placement of Object.values(product.originalDesign.placements)) {
+        for (const element of placement.elements) {
+          if (element.type !== 'text') continue;
+          for (const color of product.colors) {
+            expect(
+              contrastRatio(element.color, color.hex),
+              `${product.name}: ${element.color} na ${color.name}`,
+            ).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    }
+  });
+});
+
 describe('walidacja katalogu odrzuca błędne dane', () => {
   it('wzór wskazujący inny produkt', () => {
     const product = seedProduct();
