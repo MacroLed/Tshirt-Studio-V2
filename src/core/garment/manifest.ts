@@ -18,7 +18,8 @@ const placementManifestSchema = z.object({
 
 /**
  * Kontrakt modelu: jedyne, co aplikacja wie o kroju koszulki.
- * Pose `display` powstaje w ETAPIE 2, stąd na razie null; presety kamery dojdą wraz z edytorem.
+ * Poza `hanging` służy wieszakowi, a `display` (na niewidocznym manekinie) edytorowi;
+ * model bez pozy `display` wyświetla się w edytorze w pozie z wieszaka.
  */
 export const garmentManifestSchema = z.object({
   garmentVersionId: z.string().min(1),
@@ -30,8 +31,9 @@ export const garmentManifestSchema = z.object({
     display: z.string().min(1).nullable(),
     /** Mapa wysokości ze ściegami i prążkami w UV0. */
     detailMap: z.string().min(1),
-    /** Wypalone zacienienie fałd w UV0. */
+    /** Wypalone zacienienie fałd w UV0, osobne dla każdej pozy. */
     aoMap: z.string().min(1),
+    displayAoMap: z.string().min(1).nullable(),
   }),
   placements: z.record(placementIdSchema, placementManifestSchema),
 });

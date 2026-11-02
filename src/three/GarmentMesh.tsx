@@ -18,6 +18,8 @@ interface GarmentMeshProps {
   /** Wzór się nie zmieni, więc płótna powstają tylko dla obszarów z nadrukiem. */
   onlyUsedPlacements?: boolean;
   wave?: FabricWave;
+  /** Poza modelu: na wieszaku albo na niewidocznym manekinie w edytorze. */
+  pose?: 'hanging' | 'display';
 }
 
 function placementForMaterial(manifest: GarmentManifest, name: string): PlacementId | null {
@@ -25,10 +27,21 @@ function placementForMaterial(manifest: GarmentManifest, name: string): Placemen
 }
 
 /** Koszulka 3D: geometria z GLB, materiał i nadruk tworzone w kodzie na podstawie dokumentu. */
-export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx, onlyUsedPlacements, wave }: GarmentMeshProps) {
+export function GarmentMesh({
+  manifest,
+  design,
+  fabricColor,
+  maxTexturePx,
+  onlyUsedPlacements,
+  wave,
+  pose = 'hanging',
+}: GarmentMeshProps) {
+  const useDisplay = pose === 'display' && manifest.files.display !== null && manifest.files.displayAoMap !== null;
+  const modelFile = useDisplay ? manifest.files.display! : manifest.files.hanging;
+  const aoFile = useDisplay ? manifest.files.displayAoMap! : manifest.files.aoMap;
   // Dekoder Draco nie jest potrzebny; Meshopt jest wbudowany w pakiet, bez pobierania z CDN.
-  const { scene } = useGLTF(manifest.files.hanging, false, true);
-  const [detailMap, aoMap] = useTexture([manifest.files.detailMap, manifest.files.aoMap], (loaded) => {
+  const { scene } = useGLTF(modelFile, false, true);
+  const [detailMap, aoMap] = useTexture([manifest.files.detailMap, aoFile], (loaded) => {
     for (const texture of (Array.isArray(loaded) ? loaded : [loaded]) as Texture[]) {
       // Tak jak UV z glTF: bez odwracania osi Y.
       texture.flipY = false;

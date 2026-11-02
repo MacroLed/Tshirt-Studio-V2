@@ -12,9 +12,10 @@ export const garmentsSeed = [
     version: 1,
     files: {
       hanging: '/models/regular/hanging.glb',
-      display: null,
+      display: '/models/regular/display.glb',
       detailMap: '/models/regular/detail-2k.webp',
       aoMap: '/models/regular/ao-2k.webp',
+      displayAoMap: '/models/regular/ao-display-2k.webp',
     },
     placements: {
       front: {

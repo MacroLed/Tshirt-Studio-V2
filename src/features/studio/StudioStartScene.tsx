@@ -54,7 +54,7 @@ export default function StudioStartScene({ manifest, design, fabricColor }: Stud
     >
       <RestorableLights />
       <Suspense fallback={null}>
-        {fontsReady && <GarmentMesh manifest={manifest} design={design} fabricColor={fabricColor} />}
+        {fontsReady && <GarmentMesh manifest={manifest} design={design} fabricColor={fabricColor} pose="display" />}
       </Suspense>
       <OrbitControls
         makeDefault

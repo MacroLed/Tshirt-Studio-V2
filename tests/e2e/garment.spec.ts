@@ -24,11 +24,16 @@ function dominantChannel([r, g, b]: readonly number[]): number {
   return max - second < 40 ? -1 : values.indexOf(max);
 }
 
-async function calibrate(page: Page, placementId: PlacementId, markers: Marker[]) {
+async function calibrate(
+  page: Page,
+  placementId: PlacementId,
+  markers: Marker[],
+  pose: 'hanging' | 'display' = 'hanging',
+) {
   // Lekka strona z tej samej domeny: test ma własną scenę, wieszak tylko by go spowalniał.
   await page.goto('/nie-ma-takiej-strony');
   await page.addScriptTag({ content: bundle });
-  return page.evaluate(([p, m]) => window.runCalibration(p, m), [placementId, markers] as const);
+  return page.evaluate(([p, m, o]) => window.runCalibration(p, m, o), [placementId, markers, pose] as const);
 }
 
 // Rozkład kolorów jest niesymetryczny, więc wychwyci odbicie, obrót i przesunięcie.
@@ -56,11 +61,12 @@ const CASES: { placement: PlacementId; markers: Marker[] }[] = [
 ];
 
 test.describe('kalibracja nadruku na modelu 3D', () => {
+  for (const pose of ['hanging', 'display'] as const)
   for (const { placement, markers } of CASES) {
-    test(placement, async ({ page }, testInfo) => {
+    test(`${pose} / ${placement}`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== 'desktop', 'Ta sama logika, wystarczy jedno uruchomienie');
-      const result = await calibrate(page, placement, markers);
-      console.log(placement, JSON.stringify(result.markers.map((m) => [m.name, m.pixel, m.insidePixel])));
+      const result = await calibrate(page, placement, markers, pose);
+      console.log(pose, placement, JSON.stringify(result.markers.map((m) => [m.name, m.pixel, m.insidePixel])));
 
       for (const marker of result.markers) {
         expect(marker.pixel, `${marker.name}: brak punktu na siatce`).not.toBeNull();

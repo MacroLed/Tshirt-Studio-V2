@@ -92,8 +92,13 @@ function surfaceAt(mesh: Mesh, uv: Vector2): SurfaceHit | null {
   return null;
 }
 
-async function run(placementId: PlacementId, markers: Marker[]): Promise<CalibrationResult> {
-  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(manifest.files.hanging);
+async function run(
+  placementId: PlacementId,
+  markers: Marker[],
+  pose: 'hanging' | 'display' = 'hanging',
+): Promise<CalibrationResult> {
+  const file = pose === 'display' ? manifest.files.display! : manifest.files.hanging;
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(file);
   const scene = new Scene();
   scene.add(gltf.scene);
   scene.add(new AmbientLight('#ffffff', 3));

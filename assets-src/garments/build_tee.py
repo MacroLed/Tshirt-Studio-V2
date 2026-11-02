@@ -44,6 +44,7 @@ def parse_args():
     parser.add_argument("--resolution", type=int, default=1000)
     parser.add_argument("--skip-sim", action="store_true")
     parser.add_argument("--no-render", action="store_true")
+    parser.add_argument("--pose", choices=["hanging", "display"], default="hanging")
     return parser.parse_args(argv)
 
 
@@ -438,11 +439,20 @@ def create_tee_object(builder):
     # i powstrzymuje balon. Blender podnosi wagę do czwartej potęgi, więc małe wagi działają słabo.
     body_hem = np.vstack([segments_of(builder.hem), segments_of(mirror(builder.hem))])
     body_hem_distance = point_segment_distance(xy, body_hem)
-    goal_weight = cloth["hem_goal_weight"]
+    # Na manekinie dół układa się swobodnie na ciele, więc przyciąganie do płaskiego dotyczy tylko wieszaka.
+    goal_weight = cloth["hem_goal_weight"] if builder.pose == "hanging" else 0.0
     for index, distance in enumerate(body_hem_distance):
         fade = max(0.0, min(1.0, (8.0 - float(distance)) / 8.0))
         if fade > 0.0 and goal_weight > 0.0:
             pin_group.add([index], goal_weight * fade, "REPLACE")
+
+    # Na manekinie rękawy muszą zostać na ramionach, zamiast zsuwać się ku barkom.
+    if builder.pose == "display":
+        for line in (builder.sleeve_top, mirror(builder.sleeve_top)):
+            for point in line[:-1]:
+                old = builder.vertices.get(("weld", key_of(point)))
+                if old is not None and old in compact:
+                    pin_group.add([compact[old]], SLEEVE_HOLD_WEIGHT, "REPLACE")
 
     # Przy szwie warstwy są z założenia blisko siebie: kolizje własne tylko by je rozpychały.
     seam_group = obj.vertex_groups.new(name="no_self_collision")
@@ -490,6 +500,93 @@ def build_hanger():
     collider.collision.thickness_outer = 0.005
     collider.collision.cloth_friction = 8.0
     return body, wire, collider
+
+
+# ---------------------------------------------------------------------------
+# Manekin do pozy display
+# ---------------------------------------------------------------------------
+
+# Przekroje tułowia: wysokość w wykroju, połowa szerokości i połowa głębokości, w centymetrach.
+# Obwód ok. 92 cm przy 104 cm koszulki: tkanina musi mieć luz, a tułów nie może rozszerzać się
+# ku dołowi, bo wtedy wypycha koszulkę w górę jak stożek.
+TORSO_RINGS = [
+    (-0.5, 7.0, 4.0), (-2.0, 12.0, 5.5), (-4.0, 15.5, 6.8), (-7.0, 17.5, 8.0), (-12.0, 18.5, 9.0),
+    (-25.0, 18.5, 9.5), (-45.0, 18.2, 9.3), (-60.0, 18.0, 9.2), (-90.0, 18.0, 9.2),
+]
+ARM_RADIUS_CM = 4.2
+ARM_LENGTH_CM = 36.0
+MANNEQUIN_GROW_FRAMES = 50
+#: Waga pinów utrzymujących górną linię rękawa na ramieniu; po czwartej potędze to delikatna siła.
+SLEEVE_HOLD_WEIGHT = 0.6
+MANNEQUIN_START_DEPTH = 0.06
+
+
+def loft_object(name, rings):
+    """Bryła zamknięta z kolejnych pierścieni punktów o tej samej liczbie wierzchołków."""
+    segments = len(rings[0])
+    coords = [point for ring in rings for point in ring]
+    faces = []
+    for ring in range(len(rings) - 1):
+        for i in range(segments):
+            j = (i + 1) % segments
+            a, b = ring * segments + i, ring * segments + j
+            faces.append((a, b, b + segments, a + segments))
+    faces.append(tuple(range(segments)))
+    faces.append(tuple(range((len(rings) - 1) * segments, len(rings) * segments)))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(coords, [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+def build_mannequin(pattern):
+    """Niewidoczny tułów i ramiona. Rosną w głąb od prawie płaskich, rozpychając koszulkę od środka."""
+    segments = 40
+    angles = [2.0 * math.pi * i / segments for i in range(segments)]
+    torso_rings = [
+        [(a * CM * math.cos(t), b * CM * math.sin(t), z * CM) for t in angles]
+        for z, a, b in TORSO_RINGS
+    ]
+    parts = [loft_object("mannequin_torso", torso_rings)]
+
+    angle = math.radians(pattern["sleeve_angle_deg"])
+    direction = (math.cos(angle), -math.sin(angle))
+    perpendicular = (-math.sin(angle), -math.cos(angle))
+    shoulder = (pattern["shoulder_x"], pattern["shoulder_y"])
+    half_cuff = pattern["cuff_width"] / 2.0
+    for sign in (1.0, -1.0):
+        origin = (shoulder[0] + perpendicular[0] * half_cuff, shoulder[1] + perpendicular[1] * half_cuff)
+        rings = []
+        for along in (0.0, 8.0, 16.0, 26.0, ARM_LENGTH_CM):
+            center = (origin[0] + direction[0] * along, origin[1] + direction[1] * along)
+            ring = []
+            for t in angles:
+                offset = ARM_RADIUS_CM * math.cos(t)
+                ring.append((
+                    sign * (center[0] + perpendicular[0] * offset) * CM,
+                    ARM_RADIUS_CM * math.sin(t) * CM,
+                    (center[1] + perpendicular[1] * offset) * CM,
+                ))
+            rings.append(ring)
+        parts.append(loft_object("mannequin_arm_left" if sign > 0 else "mannequin_arm_right", rings))
+
+    for part in parts:
+        part.hide_render = True
+        part.modifiers.new("collision", "COLLISION")
+        part.collision.thickness_outer = 0.004
+        part.collision.cloth_friction = 6.0
+        part.scale = (1.0, MANNEQUIN_START_DEPTH, 1.0)
+        part.keyframe_insert(data_path="scale", frame=1)
+        part.scale = (1.0, 1.0, 1.0)
+        part.keyframe_insert(data_path="scale", frame=MANNEQUIN_GROW_FRAMES)
+    return parts
 
 
 # ---------------------------------------------------------------------------
@@ -974,8 +1071,10 @@ def setup_studio(args):
     bsdf.inputs["Base Color"].default_value = (0.75, 0.73, 0.7, 1.0)
     bsdf.inputs["Metallic"].default_value = 1.0
     bsdf.inputs["Roughness"].default_value = 0.3
-    bpy.data.objects["hanger_body"].data.materials.append(hanger_material)
-    bpy.data.objects["hanger_hook"].data.materials.append(wire_material)
+    # W pozie display nie ma wieszaka.
+    if "hanger_body" in bpy.data.objects:
+        bpy.data.objects["hanger_body"].data.materials.append(hanger_material)
+        bpy.data.objects["hanger_hook"].data.materials.append(wire_material)
 
 
 def render_views(args):
@@ -994,7 +1093,7 @@ def render_views(args):
         "detail": ((-0.25, -0.8, -0.05), (-0.08, 0.0, -0.2), 70.0),
         "sleeve_left": ((1.3, -0.25, -0.12), (0.26, 0.0, -0.14), 70.0),
     }
-    folder = os.path.join(args.out, "renders")
+    folder = os.path.join(args.out, "renders" if args.pose == "hanging" else f"renders_{args.pose}")
     os.makedirs(folder, exist_ok=True)
     backdrop = bpy.data.objects["backdrop"]
     for name, (location, target, lens) in views.items():
@@ -1043,8 +1142,12 @@ def main():
         f"zespawane końce kołnierza={welded} piny={len(builder.pin_keys)}",
         flush=True,
     )
+    builder.pose = args.pose
     tee = create_tee_object(builder)
-    build_hanger()
+    if args.pose == "hanging":
+        build_hanger()
+    else:
+        build_mannequin(pattern)
 
     if not args.skip_sim:
         simulate(tee, args.frames, pattern["cloth"])
@@ -1052,9 +1155,10 @@ def main():
 
     detail = build_detail_map(builder, os.path.join(args.out, "detail_height.png"))
     assign_materials(tee, pattern, detail)
-    bake_ambient_occlusion(tee, os.path.join(args.out, "ao.png"))
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(args.out, "tee_hanging.blend"))
-    export_glb(tee, os.path.join(args.out, "hanging.glb"))
+    ao_name = "ao.png" if args.pose == "hanging" else f"ao_{args.pose}.png"
+    bake_ambient_occlusion(tee, os.path.join(args.out, ao_name))
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(args.out, f"tee_{args.pose}.blend"))
+    export_glb(tee, os.path.join(args.out, f"{args.pose}.glb"))
     if not args.no_render:
         setup_studio(args)
         render_views(args)
