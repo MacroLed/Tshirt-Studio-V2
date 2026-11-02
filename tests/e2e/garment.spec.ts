@@ -106,8 +106,8 @@ test.describe('strona podglądu', () => {
     page.on('pageerror', (error) => errors.push(error.message));
 
     await page.goto('/studio/nocturne');
-    await expect(page.getByRole('heading', { name: 'Nocturne' })).toBeVisible();
-    const canvas = page.locator('canvas');
+    await expect(page.getByRole('heading', { name: 'Nocturne', level: 1 })).toBeVisible();
+    const canvas = page.getByTestId('studio-viewport').locator('canvas');
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(4000);
     await page.screenshot({ path: testInfo.outputPath('preview.png'), timeout: 30_000 });
@@ -117,7 +117,9 @@ test.describe('strona podglądu', () => {
     await page.waitForTimeout(4000);
     await page.screenshot({ path: testInfo.outputPath('white.png'), timeout: 30_000 });
 
+    if (testInfo.project.name === 'mobile') await page.getByTestId('open-tools').click();
     await page.getByTestId('color-sand').click();
+    if (testInfo.project.name === 'mobile') await page.getByTestId('close-panel').click();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: testInfo.outputPath('sand.png'), timeout: 30_000 });
 
@@ -137,7 +139,7 @@ test.describe('strona podglądu', () => {
     test.skip(testInfo.project.name !== 'desktop', 'Te same obliczenia, wystarczy jedno uruchomienie');
     test.setTimeout(120_000);
     await page.goto('/studio/blanc');
-    const canvas = page.locator('canvas');
+    const canvas = page.getByTestId('studio-viewport').locator('canvas');
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(4000);
 

@@ -318,14 +318,24 @@ export default function RackCanvas({
 
   useEffect(() => {
     let active = true;
-    loadPrintFonts().then(
+    // Wieszak potrzebuje tylko fontów użytych we wzorach, a nie całego wyboru z edytora.
+    const fontIds = [
+      ...new Set(
+        products.flatMap((product) =>
+          Object.values(product.originalDesign.placements).flatMap((placement) =>
+            placement.elements.flatMap((element) => (element.type === 'text' ? [element.fontId] : [])),
+          ),
+        ),
+      ),
+    ];
+    loadPrintFonts(fontIds).then(
       () => active && setFontsReady(true),
       (error: unknown) => active && setFontError(error),
     );
     return () => {
       active = false;
     };
-  }, []);
+  }, [products]);
 
   // Wybór przychodzi z góry, więc zamknięcie panelu też odwiesza koszulkę.
   useEffect(() => {

@@ -59,9 +59,70 @@ await page.waitForTimeout(1000);
 for (let i = 0; i < 10; i += 1) await page.getByRole('button', { name: 'Następna koszulka' }).click();
 await page.waitForTimeout(1500);
 
+const rackStats = await page.evaluate(() => window.__stats);
+
+// Edytor: obszary, kolory i obrót, także po kilku przełączeniach.
+await page.goto(`${new URL(url).origin}/studio/dune`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+const viewport = page.getByTestId('studio-viewport');
+await viewport.locator('canvas').waitFor({ timeout: 120000 });
+await page.waitForTimeout(2000);
+for (let round = 0; round < 3; round += 1) {
+  for (const placement of ['back', 'sleeve_left', 'sleeve_right', 'front']) {
+    await page.getByTestId(`placement-${placement}`).click();
+    await page.waitForTimeout(350);
+  }
+  await page.getByTestId('color-white').click();
+  await page.getByTestId('undo').click();
+}
+const box = await viewport.boundingBox();
+await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+await page.mouse.down();
+await page.mouse.move(box.x + box.width / 2 + 180, box.y + box.height / 2, { steps: 12 });
+await page.mouse.up();
+await page.waitForTimeout(1000);
+
+// Płynność przeciągania tekstu: każdy ruch rysuje płótno i wysyła teksturę na GPU.
+await page.getByTestId('add-text').click();
+await page.getByTestId('text-content').blur();
+const overlay = await page.getByTestId('selection-overlay').boundingBox();
+await page.evaluate(() => {
+  window.__frames = [];
+  let last = performance.now();
+  const tick = (now) => {
+    window.__frames.push(now - last);
+    last = now;
+    window.__frameLoop = requestAnimationFrame(tick);
+  };
+  window.__frameLoop = requestAnimationFrame(tick);
+});
+const centerX = overlay.x + overlay.width / 2;
+const centerY = overlay.y + overlay.height / 2;
+await page.mouse.move(centerX, centerY);
+await page.mouse.down();
+for (let step = 0; step < 180; step += 1) {
+  await page.mouse.move(
+    centerX + Math.sin(step / 12) * overlay.width * 0.3,
+    centerY + Math.cos(step / 17) * overlay.height * 0.3,
+  );
+  await page.waitForTimeout(16);
+}
+await page.mouse.up();
+const frames = await page.evaluate(() => {
+  cancelAnimationFrame(window.__frameLoop);
+  return window.__frames.slice(1);
+});
+const sorted = [...frames].sort((a, b) => a - b);
+const mean = frames.reduce((sum, value) => sum + value, 0) / frames.length;
+console.log('przeciąganie tekstu:', {
+  fps: +(1000 / mean).toFixed(1),
+  p95Ms: +sorted[Math.floor(sorted.length * 0.95)].toFixed(1),
+  maxMs: +sorted[sorted.length - 1].toFixed(1),
+});
+
 const stats = await page.evaluate(() => window.__stats);
+console.log('wieszak:', rackStats);
 const gpu = await page.evaluate(() => {
-  const gl = document.querySelector('canvas')?.getContext('webgl2');
+  const gl = document.querySelector('[data-testid="studio-viewport"] canvas')?.getContext('webgl2');
   const info = gl?.getExtension('WEBGL_debug_renderer_info');
   return info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : 'nieznany';
 });

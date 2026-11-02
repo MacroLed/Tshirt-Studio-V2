@@ -1,0 +1,369 @@
+'use client';
+
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useStore } from 'zustand';
+import type { Product } from '@/core/catalog/schema';
+import { createWorkingCopy } from '@/core/design/commands';
+import { PLACEMENT_IDS, type DesignDocument, type PlacementId } from '@/core/design/schema';
+import type { GarmentManifest } from '@/core/garment/manifest';
+import { loadPrintFonts } from '@/three/printFonts';
+import { PrintTextureManager } from '@/three/PrintTextureManager';
+import { WebGLGuard } from '@/three/WebGLGuard';
+import { ColorPicker } from './ColorPicker';
+import { FlatCanvas } from './FlatCanvas';
+import { PLACEMENT_LABELS } from './placementLabels';
+import { PropertiesPanel } from './PropertiesPanel';
+import { createStudioStore, isDirty } from './studioStore';
+import { createTextElement } from './textDefaults';
+
+const StudioViewport = dynamic(() => import('./StudioViewport'), {
+  ssr: false,
+  loading: () => (
+    <p className="absolute inset-0 grid place-items-center text-sm text-muted" role="status">
+      Ładowanie modelu 3D…
+    </p>
+  ),
+});
+
+type MobilePanel = 'tools' | 'properties' | null;
+
+const LEAVE_WARNING = 'Projekt nie jest jeszcze zapisywany i zmiany zostaną utracone. Czy na pewno chcesz wyjść?';
+const NUDGE_MM = 1;
+const NUDGE_FAST_MM = 10;
+
+function ToolbarButton({
+  label,
+  onClick,
+  disabled,
+  pressed,
+  title,
+  testId,
+}: {
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  pressed?: boolean;
+  title?: string;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={pressed}
+      title={title}
+      data-testid={testId}
+      className="cursor-pointer border border-line px-3 py-1.5 text-sm transition-colors duration-150 ease-studio hover:bg-ink hover:text-canvas disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink aria-pressed:bg-ink aria-pressed:text-canvas"
+    >
+      {label}
+    </button>
+  );
+}
+
+function PanelSection({ title, children }: { title?: string; children: ReactNode }) {
+  return (
+    <section className="border-b border-line p-4">
+      {title && <h2 className="mb-3 text-sm font-medium">{title}</h2>}
+      {children}
+    </section>
+  );
+}
+
+/** Edytor na pełnym ekranie: stan projektu, panele, podgląd 3D i płótno 2D ze wspólnej bitmapy. */
+export default function StudioEditor({
+  product,
+  products,
+  manifest,
+  initialColor,
+}: {
+  product: Product;
+  products: Pick<Product, 'id' | 'slug' | 'name'>[];
+  manifest: GarmentManifest;
+  initialColor: string;
+}) {
+  const [store] = useState(() => createStudioStore(createWorkingCopy(product.originalDesign, initialColor)));
+  const [textures] = useState(() => new PrintTextureManager(manifest));
+  const [fontsReady, setFontsReady] = useState(false);
+  const [fontError, setFontError] = useState<unknown>(null);
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [focusRequest, setFocusRequest] = useState<string | null>(null);
+  const drawnPlacements = useRef<DesignDocument['placements'] | null>(null);
+
+  const document: DesignDocument = useStore(store, (state) => state.history.present);
+  const canUndo = useStore(store, (state) => state.history.past.length > 0);
+  const canRedo = useStore(store, (state) => state.history.future.length > 0);
+  const dirty = useStore(store, isDirty);
+  const active = document.editor.activePlacement;
+
+  const setColor = useCallback((hex: string) => store.getState().setFabricColor(hex), [store]);
+
+  useEffect(() => {
+    let current = true;
+    loadPrintFonts().then(
+      () => current && setFontsReady(true),
+      (error: unknown) => current && setFontError(error),
+    );
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  // Nadruk rysujemy w jednym miejscu, a płótno 2D i tekstura 3D korzystają z tego samego wyniku.
+  // Rysowane są tylko zmienione obszary, żeby wysyłka tekstur nie spowalniała przeciągania.
+  const placements = document.placements;
+  useEffect(() => {
+    if (!fontsReady) return;
+    const previous = drawnPlacements.current;
+    const changed: PlacementId[] = PLACEMENT_IDS.filter(
+      (placement) => !previous || previous[placement] !== placements[placement],
+    );
+    drawnPlacements.current = placements;
+    if (changed.length === 0) return;
+    const report = textures.update(store.getState().history.present, changed);
+    if (report.missingAssetIds.length > 0 || report.unknownFontIds.length > 0) {
+      console.error('Projekt ma brakujące zasoby', report);
+    }
+  }, [placements, fontsReady, textures, store]);
+
+  useEffect(() => () => textures.dispose(), [textures]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const state = store.getState();
+      const withModifier = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+
+      if (withModifier) {
+        if (key === 'z' && !event.shiftKey) state.undo();
+        else if (key === 'y' || (key === 'z' && event.shiftKey)) state.redo();
+        else if (key === 'd') state.duplicateSelected(crypto.randomUUID());
+        else return;
+        event.preventDefault();
+        return;
+      }
+
+      if (key === 'escape') {
+        state.select(null);
+        return;
+      }
+      if (state.selectedId === null) return;
+      if (key === 'delete' || key === 'backspace') {
+        state.removeSelected();
+        event.preventDefault();
+        return;
+      }
+      const step = event.shiftKey ? NUDGE_FAST_MM : NUDGE_MM;
+      const offsets: Record<string, [number, number]> = {
+        arrowleft: [-step, 0],
+        arrowright: [step, 0],
+        arrowup: [0, -step],
+        arrowdown: [0, step],
+      };
+      const offset = offsets[key];
+      if (!offset) return;
+      const { present } = state.history;
+      const element = present.placements[present.editor.activePlacement].elements.find(
+        (candidate) => candidate.id === state.selectedId,
+      );
+      if (element) state.updateSelected({ xMm: element.xMm + offset[0], yMm: element.yMm + offset[1] });
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [store]);
+
+  if (fontError) throw fontError;
+
+  // Bez zapisu projektu wyjście kasuje pracę, więc klient musi to potwierdzić.
+  const confirmLeave = (event: ReactMouseEvent) => {
+    if (dirty && !window.confirm(LEAVE_WARNING)) event.preventDefault();
+  };
+
+  const addText = () => {
+    const area = manifest.placements[active]?.printArea;
+    if (!area) return;
+    const element = createTextElement(crypto.randomUUID(), area, document.fabricColor);
+    store.getState().addElement(element);
+    setFocusRequest(element.id);
+    setMobilePanel((panel) => (panel === null ? panel : 'properties'));
+  };
+
+  const panelClass = (panel: Exclude<MobilePanel, null>) =>
+    `${mobilePanel === panel ? 'absolute inset-0 z-20 block pt-12' : 'hidden'} overflow-y-auto bg-canvas lg:static lg:z-auto lg:block lg:pt-0`;
+
+  return (
+    <div
+      className="flex h-dvh animate-[studio-enter_400ms_var(--ease-studio)] flex-col"
+      data-testid="studio"
+      data-product={product.id}
+      data-garment={manifest.garmentVersionId}
+      data-fabric-color={document.fabricColor.toLowerCase()}
+      data-active-placement={active}
+      data-design-elements={Object.values(document.placements)
+        .flatMap((placement) => placement.elements.map((element) => element.id))
+        .join(',')}
+    >
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-2">
+        <Link href="/" onClick={confirmLeave} className="text-sm text-muted underline-offset-4 hover:underline">
+          ← Produkty
+        </Link>
+        <h1 className="font-display text-2xl leading-none">{product.name}</h1>
+        <div className="ml-auto flex flex-wrap items-center gap-1.5 sm:gap-2" role="toolbar" aria-label="Działania na projekcie">
+          <ToolbarButton label="Cofnij" onClick={() => store.getState().undo()} disabled={!canUndo} testId="undo" />
+          <ToolbarButton label="Ponów" onClick={() => store.getState().redo()} disabled={!canRedo} testId="redo" />
+          <ToolbarButton label="Resetuj" onClick={() => store.getState().reset()} disabled={!dirty} testId="reset" />
+          <ToolbarButton
+            label="Podgląd"
+            onClick={() => setPreviewMode((value) => !value)}
+            pressed={previewMode}
+            testId="preview-toggle"
+          />
+          {/* Oznaczone jako niedostępne, dopóki nie powstaną odpowiednie etapy. */}
+          <span className="hidden gap-2 sm:flex">
+            <ToolbarButton label="Zapisz" disabled title="Dostępne po dodaniu kont (ETAP 4)" />
+            <ToolbarButton label="Do koszyka" disabled title="Dostępne po uruchomieniu sklepu (ETAP 5)" />
+          </span>
+        </div>
+      </header>
+
+      <div
+        className={`relative min-h-0 flex-1 lg:grid ${
+          previewMode ? 'lg:grid-cols-1' : 'lg:grid-cols-[17rem_minmax(0,1fr)_21rem]'
+        }`}
+      >
+        {!previewMode && (
+          <aside aria-label="Narzędzia" data-testid="tool-panel" className={`border-line lg:border-r ${panelClass('tools')}`}>
+            <PanelSection title="Dodaj do projektu">
+              <button
+                type="button"
+                onClick={addText}
+                data-testid="add-text"
+                className="w-full cursor-pointer bg-ink px-3 py-2.5 text-sm font-medium text-on-accent transition-colors duration-150 ease-studio hover:bg-accent"
+              >
+                Dodaj tekst
+              </button>
+              <p className="mt-2 text-xs text-muted">Logo, obrazy, gotowe wzory i warstwy pojawią się w kolejnych krokach.</p>
+            </PanelSection>
+            <PanelSection>
+              <ColorPicker colors={product.colors} value={document.fabricColor} onChange={setColor} />
+            </PanelSection>
+            <PanelSection title="Koszulka">
+              <ul className="space-y-1 text-sm">
+                {products.map((candidate) => (
+                  <li key={candidate.id}>
+                    <Link
+                      href={`/studio/${candidate.slug}`}
+                      onClick={confirmLeave}
+                      aria-current={candidate.id === product.id ? 'page' : undefined}
+                      className="block px-2 py-1 underline-offset-4 hover:underline aria-[current=page]:bg-ink aria-[current=page]:text-canvas"
+                    >
+                      {candidate.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </PanelSection>
+          </aside>
+        )}
+
+        <main className="flex h-full min-h-0 min-w-0 flex-col">
+          <div className="relative min-h-0 flex-1" data-testid="studio-viewport">
+            <WebGLGuard
+              fallback={
+                <p className="p-8 text-sm text-muted" role="status">
+                  Podgląd 3D wymaga przeglądarki z obsługą WebGL. Płótno 2D działa bez niego.
+                </p>
+              }
+            >
+              {fontsReady && <StudioViewport manifest={manifest} document={document} textures={textures} />}
+            </WebGLGuard>
+          </div>
+
+          <div role="tablist" aria-label="Obszar edycji" className="flex flex-wrap justify-center gap-1 border-t border-line p-2">
+            {PLACEMENT_IDS.map((placement) => {
+              const count = document.placements[placement].elements.length;
+              const selected = placement === active;
+              return (
+                <button
+                  key={placement}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  data-testid={`placement-${placement}`}
+                  onClick={() => store.getState().setActivePlacement(placement)}
+                  className="cursor-pointer px-3 py-2 text-sm transition-colors duration-150 ease-studio hover:bg-ink/10 aria-selected:bg-ink aria-selected:text-canvas"
+                >
+                  {PLACEMENT_LABELS[placement]}
+                  {count > 0 && <span className="ml-1.5 text-xs opacity-70">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-2 gap-px border-t border-line bg-line lg:hidden">
+            {(
+              [
+                ['tools', 'Narzędzia'],
+                ['properties', 'Płótno i właściwości'],
+              ] as const
+            ).map(([panel, label]) => (
+              <button
+                key={panel}
+                type="button"
+                aria-expanded={mobilePanel === panel}
+                data-testid={`open-${panel}`}
+                onClick={() => setMobilePanel(panel)}
+                className="cursor-pointer bg-canvas py-3 text-sm"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </main>
+
+        {!previewMode && (
+          <aside aria-label="Właściwości" data-testid="properties-panel" className={`border-line lg:border-l ${panelClass('properties')}`}>
+            {/* Płótno jest przypięte: projekt musi być widoczny także podczas zmiany właściwości. */}
+            <div className="sticky top-0 z-10 bg-canvas">
+              <PanelSection>
+                <FlatCanvas
+                  manifest={manifest}
+                  textures={textures}
+                  active={active}
+                  fabricColor={document.fabricColor}
+                  store={store}
+                  fontsReady={fontsReady}
+                />
+              </PanelSection>
+            </div>
+            <PropertiesPanel store={store} focusRequest={focusRequest} />
+          </aside>
+        )}
+
+        {mobilePanel && (
+          <button
+            type="button"
+            onClick={() => setMobilePanel(null)}
+            data-testid="close-panel"
+            className="absolute right-3 top-2 z-30 cursor-pointer bg-ink px-3 py-1.5 text-sm text-canvas lg:hidden"
+          >
+            Zamknij
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

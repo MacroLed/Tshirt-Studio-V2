@@ -11,6 +11,8 @@ export interface FabricMaterialOptions {
   aoMap?: Texture | null;
   /** Fala na tkaninie podczas ruchu koszulki; wspólny obiekt, zmieniany z pętli animacji. */
   wave?: FabricWave;
+  /** Obrys pola nadruku w edytorze, od 0 do 1; to pomoc wizualna, która nigdy nie trafia do druku. */
+  outline?: { value: number };
 }
 
 export interface FabricWave {
@@ -61,6 +63,7 @@ export function createFabricMaterial(options: FabricMaterialOptions): MeshPhysic
     shader.uniforms.uWaveAmplitude = wave.amplitude;
     shader.uniforms.uWaveTime = wave.time;
     shader.uniforms.uWaveOriginY = wave.originY;
+    shader.uniforms.uOutline = options.outline ?? { value: 0 };
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
@@ -88,6 +91,7 @@ export function createFabricMaterial(options: FabricMaterialOptions): MeshPhysic
         '#include <common>',
         `#include <common>
         uniform sampler2D uPrintMap;
+        uniform float uOutline;
         varying vec2 vPrintUv;
         float gPrintAlpha = 0.0;
         vec3 printSrgbToLinear(vec3 c) {
@@ -104,6 +108,11 @@ export function createFabricMaterial(options: FabricMaterialOptions): MeshPhysic
             gPrintAlpha = printSample.a;
             vec3 printColor = printSrgbToLinear(clamp(printSample.rgb / printSample.a, 0.0, 1.0));
             diffuseColor.rgb = mix(diffuseColor.rgb, printColor, gPrintAlpha);
+          }
+          if (uOutline > 0.0) {
+            float edge = min(min(vPrintUv.x, 1.0 - vPrintUv.x), min(vPrintUv.y, 1.0 - vPrintUv.y));
+            float line = 1.0 - smoothstep(0.0, fwidth(edge) * 2.0, edge);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.75, 0.16, 0.04), line * uOutline);
           }
         }`,
       )

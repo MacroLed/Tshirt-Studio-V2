@@ -21,6 +21,8 @@ Celem jest działająca platforma do projektowania i sprzedaży koszulek, zbudow
 - **Model koszulki:** Blender i skrypt (wykrój → szycie → symulacja tkaniny → GLB).
 - **Układ edytora:** duży podgląd 3D na środku i dokowane płótno 2D, widoczne jednocześnie. Przeciąganie działa też bezpośrednio na koszulce 3D. Na telefonie jest przełącznik 3D/2D.
 
+- **Kolor koszulki (odejście od pkt 5.7 specyfikacji):** tylko kolory dostępne dla produktu, bez selektora i HEX, bo drukarnia ma wyłącznie realne kolory koszulek. Dowolny kolor zostaje dla tekstu i nadruków.
+
 ### Uzupełnienia luk w specyfikacji
 
 1. **Brak rozmiarów (S–XXL).** Specyfikacja wymienia tylko ilość, a koszulki nie da się sprzedać bez rozmiaru. Dodaję warianty kolor + rozmiar.
@@ -38,7 +40,7 @@ Płótno 2D, tekstura 3D i plik do druku to trzy wyniki tej samej funkcji `rende
 ```
                        ┌─► canvas podglądu (ok. 2048 px) ─┬─► płótno 2D (ten sam bitmap + uchwyty SVG)
 DesignDocument (mm) ───┤                                  └─► CanvasTexture → shader nadruku → model 3D
-  Zustand + zundo      │
+  Zustand + historia   │
                        └─► serwer (@napi-rs/canvas, np. 300 DPI) ─► PNG z przezroczystością do druku
 ```
 
@@ -58,7 +60,7 @@ Wersje sprawdzone w npm 2026-11-02.
 |---|---|---|
 | Aplikacja | Next.js 16, React 19.3, TypeScript, Tailwind 4 | Zgodnie ze specyfikacją. React przypięty do 19.3.x, bo R3F 9.8 wymaga `<19.4` |
 | 3D | three 0.187, R3F 9, drei 10 | Zgodnie ze specyfikacją |
-| Stan | Zustand 5 + zundo 2 | Cofanie i ponawianie na samym dokumencie; jeden gest to jeden krok historii |
+| Stan | Zustand 5 + własna historia (`core/design/history`) | Cofanie i ponawianie na samym dokumencie; jeden gest to jeden krok historii. Zamiast `zundo`, które do łączenia gestów wymagałoby użycia wewnętrznych funkcji biblioteki; historia to kilkadziesiąt linii czystego, testowalnego kodu |
 | Walidacja | Zod 4 | Ten sam schemat w przeglądarce i na serwerze |
 | Backend | Supabase (Postgres, Auth, Storage, RLS), region UE | Jedna usługa na bazę, logowanie i pliki; RLS chroni dane także przy błędzie w API |
 | Hosting | Vercel | Natywnie dla Next.js |
@@ -147,7 +149,7 @@ tests/                       unit, visual (złote obrazy), e2e
 ```ts
 interface GarmentManifest {
   garmentId: string; fit: 'regular' | 'oversized' | 'slim' | 'long_sleeve'; version: number;
-  files: { hanging: string; display: string };
+  files: { hanging: string; display: string | null; detailMap: string; aoMap: string; displayAoMap: string | null };
   placements: Record<PlacementId, {
     meshName: string;             // np. 'panel_front'
     printAreaMm: { width: number; height: number };

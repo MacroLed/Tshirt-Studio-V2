@@ -14,6 +14,11 @@ const placementManifestSchema = z.object({
   printArea: printAreaSchema,
   safeMarginMm: z.number().nonnegative(),
   previewTexturePx: z.number().int().positive(),
+  /** Widok kamery w edytorze na ten obszar, w układzie modelu w pozie display. */
+  cameraPreset: z.object({
+    position: z.tuple([z.number(), z.number(), z.number()]),
+    target: z.tuple([z.number(), z.number(), z.number()]),
+  }),
 });
 
 /**

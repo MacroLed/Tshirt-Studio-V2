@@ -20,6 +20,25 @@ interface GarmentMeshProps {
   wave?: FabricWave;
   /** Poza modelu: na wieszaku albo na niewidocznym manekinie w edytorze. */
   pose?: 'hanging' | 'display';
+  /**
+   * Tekstury zarządzane z zewnątrz i wspólne z płótnem 2D. Właściciel sam je rysuje i zwalnia;
+   * bez tej właściwości koszulka ma własne, jak na wieszaku.
+   */
+  textures?: PrintTextureManager;
+  /** Obszar edytowany w edytorze: jego pole nadruku dostaje obrys. */
+  activePlacement?: PlacementId | null;
+}
+
+/** Parametry shadera obrysu pola nadruku, po jednym na obszar. */
+class PlacementOutlines {
+  readonly uniforms = Object.fromEntries(PLACEMENT_IDS.map((id) => [id, { value: 0 }])) as Record<
+    PlacementId,
+    { value: number }
+  >;
+
+  setActive(active: PlacementId | null): void {
+    for (const id of PLACEMENT_IDS) this.uniforms[id].value = id === active ? 1 : 0;
+  }
 }
 
 function placementForMaterial(manifest: GarmentManifest, name: string): PlacementId | null {
@@ -35,6 +54,8 @@ export function GarmentMesh({
   onlyUsedPlacements,
   wave,
   pose = 'hanging',
+  textures: sharedTextures,
+  activePlacement = null,
 }: GarmentMeshProps) {
   const useDisplay = pose === 'display' && manifest.files.display !== null && manifest.files.displayAoMap !== null;
   const modelFile = useDisplay ? manifest.files.display! : manifest.files.hanging;
@@ -53,17 +74,21 @@ export function GarmentMesh({
   // Scena renderuje się na żądanie, więc każda zmiana poza pętlą musi poprosić o nową klatkę.
   const invalidate = useThree((state) => state.invalidate);
 
-  const textures = useMemo(
+  const ownTextures = useMemo(
     () =>
-      new PrintTextureManager(manifest, {
-        maxTexturePx,
-        ...(onlyUsedPlacements ? { onlyPlacementsOf: design } : {}),
-      }),
+      sharedTextures
+        ? null
+        : new PrintTextureManager(manifest, {
+            maxTexturePx,
+            ...(onlyUsedPlacements ? { onlyPlacementsOf: design } : {}),
+          }),
     // Przy onlyUsedPlacements projekt jest z założenia stały, więc nie przebudowujemy płócien.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [manifest, maxTexturePx, onlyUsedPlacements],
+    [manifest, maxTexturePx, onlyUsedPlacements, sharedTextures],
   );
+  const textures = sharedTextures ?? ownTextures!;
   const knitMap = getKnitNormalTexture();
+  const outlines = useMemo(() => new PlacementOutlines(), []);
 
   const { root, materials } = useMemo(() => {
     const clone: Object3D = scene.clone(true);
@@ -80,6 +105,7 @@ export function GarmentMesh({
         knitMap,
         aoMap,
         wave,
+        outline: placementId ? outlines.uniforms[placementId] : undefined,
       });
       material.name = source.name;
       child.material = material;
@@ -90,15 +116,21 @@ export function GarmentMesh({
     return { root: clone, materials: created };
     // Kolor aktualizuje osobny efekt: jego zmiana nie może przebudowywać materiałów.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, manifest, textures, detailMap, aoMap, knitMap, wave]);
+  }, [scene, manifest, textures, detailMap, aoMap, knitMap, wave, outlines]);
 
   useEffect(() => {
-    const report = textures.update(design);
+    if (!ownTextures) return;
+    const report = ownTextures.update(design);
     if (report.missingAssetIds.length > 0 || report.unknownFontIds.length > 0) {
       console.error('Projekt ma brakujące zasoby', report);
     }
     invalidate();
-  }, [design, textures, invalidate]);
+  }, [design, ownTextures, invalidate]);
+
+  useEffect(() => {
+    outlines.setActive(activePlacement);
+    invalidate();
+  }, [activePlacement, outlines, invalidate]);
 
   useEffect(() => {
     for (const material of materials) material.color.set(fabricColor);
@@ -113,9 +145,9 @@ export function GarmentMesh({
   );
   useEffect(
     () => () => {
-      textures.dispose();
+      ownTextures?.dispose();
     },
-    [textures],
+    [ownTextures],
   );
 
   return <primitive object={root} />;
