@@ -119,6 +119,40 @@ console.log('przeciąganie tekstu:', {
   maxMs: +sorted[sorted.length - 1].toFixed(1),
 });
 
+// To samo na koszulce 3D: każdy ruch to dodatkowo promień przez siatkę panelu.
+await page.getByTestId('placement-front').click();
+await page.waitForTimeout(1500);
+const viewBox = await viewport.boundingBox();
+const viewX = viewBox.x + viewBox.width / 2;
+const viewY = viewBox.y + viewBox.height / 2;
+await page.evaluate(() => {
+  window.__frames = [];
+  let last = performance.now();
+  const tick = (now) => {
+    window.__frames.push(now - last);
+    last = now;
+    window.__frameLoop = requestAnimationFrame(tick);
+  };
+  window.__frameLoop = requestAnimationFrame(tick);
+});
+await page.mouse.move(viewX, viewY);
+await page.mouse.down();
+for (let step = 0; step < 180; step += 1) {
+  await page.mouse.move(viewX + Math.sin(step / 12) * 80, viewY + Math.cos(step / 17) * 90);
+  await page.waitForTimeout(16);
+}
+await page.mouse.up();
+const frames3d = await page.evaluate(() => {
+  cancelAnimationFrame(window.__frameLoop);
+  return window.__frames.slice(1);
+});
+const sorted3d = [...frames3d].sort((a, b) => a - b);
+console.log('przeciąganie na 3D:', {
+  fps: +(1000 / (frames3d.reduce((sum, value) => sum + value, 0) / frames3d.length)).toFixed(1),
+  p95Ms: +sorted3d[Math.floor(sorted3d.length * 0.95)].toFixed(1),
+  maxMs: +sorted3d[sorted3d.length - 1].toFixed(1),
+});
+
 const stats = await page.evaluate(() => window.__stats);
 console.log('wieszak:', rackStats);
 const gpu = await page.evaluate(() => {

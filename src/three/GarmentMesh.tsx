@@ -3,10 +3,21 @@
 import { useGLTF, useTexture } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { ClampToEdgeWrapping, Mesh, NoColorSpace, type MeshPhysicalMaterial, type Object3D, type Material, type Texture } from 'three';
+import {
+  ClampToEdgeWrapping,
+  Mesh,
+  NoColorSpace,
+  Vector2,
+  Vector4,
+  type MeshPhysicalMaterial,
+  type Object3D,
+  type Material,
+  type Texture,
+} from 'three';
+import type { ElementBox } from '@/core/design/geometry';
 import { PLACEMENT_IDS, type DesignDocument, type PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
-import { createFabricMaterial, type FabricWave } from './fabricMaterial';
+import { createFabricMaterial, type FabricSelection, type FabricWave } from './fabricMaterial';
 import { getKnitNormalTexture } from './knitTexture';
 import { PrintTextureManager } from './PrintTextureManager';
 
@@ -27,6 +38,8 @@ interface GarmentMeshProps {
   textures?: PrintTextureManager;
   /** Obszar edytowany w edytorze: jego pole nadruku dostaje obrys. */
   activePlacement?: PlacementId | null;
+  /** Zaznaczony element: jego obrys jest rysowany na tkaninie. */
+  selection?: { placement: PlacementId; box: ElementBox } | null;
 }
 
 /** Parametry shadera obrysu pola nadruku, po jednym na obszar. */
@@ -36,8 +49,39 @@ class PlacementOutlines {
     { value: number }
   >;
 
+  readonly selections: Record<PlacementId, FabricSelection>;
+
+  constructor(manifest: GarmentManifest) {
+    this.selections = Object.fromEntries(
+      PLACEMENT_IDS.map((id) => {
+        const area = manifest.placements[id]?.printArea;
+        return [
+          id,
+          {
+            box: { value: new Vector4() },
+            rotationRad: { value: 0 },
+            areaMm: { value: new Vector2(area?.widthMm ?? 1, area?.heightMm ?? 1) },
+          },
+        ];
+      }),
+    ) as Record<PlacementId, FabricSelection>;
+  }
+
   setActive(active: PlacementId | null): void {
     for (const id of PLACEMENT_IDS) this.uniforms[id].value = id === active ? 1 : 0;
+  }
+
+  setSelection(selection: { placement: PlacementId; box: ElementBox } | null): void {
+    for (const id of PLACEMENT_IDS) {
+      const uniforms = this.selections[id];
+      if (selection?.placement === id) {
+        const { box } = selection;
+        uniforms.box.value.set(box.x, box.y, box.width / 2, box.height / 2);
+        uniforms.rotationRad.value = (box.rotationDeg * Math.PI) / 180;
+      } else {
+        uniforms.box.value.set(0, 0, 0, 0);
+      }
+    }
   }
 }
 
@@ -56,6 +100,7 @@ export function GarmentMesh({
   pose = 'hanging',
   textures: sharedTextures,
   activePlacement = null,
+  selection = null,
 }: GarmentMeshProps) {
   const useDisplay = pose === 'display' && manifest.files.display !== null && manifest.files.displayAoMap !== null;
   const modelFile = useDisplay ? manifest.files.display! : manifest.files.hanging;
@@ -88,7 +133,7 @@ export function GarmentMesh({
   );
   const textures = sharedTextures ?? ownTextures!;
   const knitMap = getKnitNormalTexture();
-  const outlines = useMemo(() => new PlacementOutlines(), []);
+  const outlines = useMemo(() => new PlacementOutlines(manifest), [manifest]);
 
   const { root, materials } = useMemo(() => {
     const clone: Object3D = scene.clone(true);
@@ -106,6 +151,7 @@ export function GarmentMesh({
         aoMap,
         wave,
         outline: placementId ? outlines.uniforms[placementId] : undefined,
+        selection: placementId ? outlines.selections[placementId] : undefined,
       });
       material.name = source.name;
       child.material = material;
@@ -131,6 +177,11 @@ export function GarmentMesh({
     outlines.setActive(activePlacement);
     invalidate();
   }, [activePlacement, outlines, invalidate]);
+
+  useEffect(() => {
+    outlines.setSelection(selection);
+    invalidate();
+  }, [selection, outlines, invalidate]);
 
   useEffect(() => {
     for (const material of materials) material.color.set(fabricColor);

@@ -92,6 +92,7 @@ export default function StudioEditor({
   const [previewMode, setPreviewMode] = useState(false);
   const [focusRequest, setFocusRequest] = useState<string | null>(null);
   const drawnPlacements = useRef<DesignDocument['placements'] | null>(null);
+  const viewportHost = useRef<HTMLDivElement>(null);
 
   const document: DesignDocument = useStore(store, (state) => state.history.present);
   const canUndo = useStore(store, (state) => state.history.past.length > 0);
@@ -280,7 +281,7 @@ export default function StudioEditor({
         )}
 
         <main className="flex h-full min-h-0 min-w-0 flex-col">
-          <div className="relative min-h-0 flex-1" data-testid="studio-viewport">
+          <div ref={viewportHost} className="relative min-h-0 flex-1" data-testid="studio-viewport">
             <WebGLGuard
               fallback={
                 <p className="p-8 text-sm text-muted" role="status">
@@ -288,7 +289,16 @@ export default function StudioEditor({
                 </p>
               }
             >
-              {fontsReady && <StudioViewport manifest={manifest} document={document} textures={textures} />}
+              {fontsReady && (
+                <StudioViewport
+                  manifest={manifest}
+                  document={document}
+                  textures={textures}
+                  store={store}
+                  hostRef={viewportHost}
+                  showGuides={!previewMode}
+                />
+              )}
             </WebGLGuard>
           </div>
 

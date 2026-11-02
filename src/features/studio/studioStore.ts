@@ -19,6 +19,8 @@ export interface StudioState {
   baseline: DesignDocument;
   /** Zaznaczenie to stan widoku: nie jest częścią projektu ani historii. */
   selectedId: string | null;
+  /** Rośnie przy każdym wyborze obszaru: kamera ma wrócić na ten obszar także przy ponownym kliknięciu. */
+  viewRequest: number;
   setFabricColor(color: string): void;
   beginGesture(): void;
   endGesture(): void;
@@ -61,6 +63,7 @@ export function createStudioStore(initial: DesignDocument): StudioStore {
       gestureStart: null,
       baseline: initial,
       selectedId: null,
+      viewRequest: 0,
       setFabricColor: (color) => apply(setFabricColor(present(), color)),
       beginGesture: () => set((state) => ({ gestureStart: state.gestureStart ?? state.history.present })),
       endGesture: () => {
@@ -73,6 +76,7 @@ export function createStudioStore(initial: DesignDocument): StudioStore {
       setActivePlacement: (placement) =>
         set((state) => ({
           selectedId: placement === state.history.present.editor.activePlacement ? state.selectedId : null,
+          viewRequest: state.viewRequest + 1,
           history: replacePresent(state.history, setActivePlacement(state.history.present, placement)),
         })),
       select: (elementId) => set({ selectedId: elementId }),

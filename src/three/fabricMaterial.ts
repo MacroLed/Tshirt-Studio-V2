@@ -1,4 +1,4 @@
-import { Color, DoubleSide, MeshPhysicalMaterial, Vector2, type Texture } from 'three';
+import { Color, DoubleSide, MeshPhysicalMaterial, Vector2, Vector4, type Texture } from 'three';
 
 export interface FabricMaterialOptions {
   fabricColor: string;
@@ -13,6 +13,15 @@ export interface FabricMaterialOptions {
   wave?: FabricWave;
   /** Obrys pola nadruku w edytorze, od 0 do 1; to pomoc wizualna, która nigdy nie trafia do druku. */
   outline?: { value: number };
+  /** Obrys zaznaczonego elementu w edytorze; także tylko pomoc wizualna. */
+  selection?: FabricSelection;
+}
+
+export interface FabricSelection {
+  /** Środek i połowy wymiarów w milimetrach; połowa szerokości 0 oznacza brak zaznaczenia. */
+  box: { value: Vector4 };
+  rotationRad: { value: number };
+  areaMm: { value: Vector2 };
 }
 
 export interface FabricWave {
@@ -64,6 +73,9 @@ export function createFabricMaterial(options: FabricMaterialOptions): MeshPhysic
     shader.uniforms.uWaveTime = wave.time;
     shader.uniforms.uWaveOriginY = wave.originY;
     shader.uniforms.uOutline = options.outline ?? { value: 0 };
+    shader.uniforms.uSelectionBox = options.selection?.box ?? { value: new Vector4() };
+    shader.uniforms.uSelectionRotation = options.selection?.rotationRad ?? { value: 0 };
+    shader.uniforms.uPrintAreaMm = options.selection?.areaMm ?? { value: new Vector2(1, 1) };
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
@@ -92,6 +104,9 @@ export function createFabricMaterial(options: FabricMaterialOptions): MeshPhysic
         `#include <common>
         uniform sampler2D uPrintMap;
         uniform float uOutline;
+        uniform vec4 uSelectionBox;
+        uniform float uSelectionRotation;
+        uniform vec2 uPrintAreaMm;
         varying vec2 vPrintUv;
         float gPrintAlpha = 0.0;
         vec3 printSrgbToLinear(vec3 c) {
@@ -113,6 +128,16 @@ export function createFabricMaterial(options: FabricMaterialOptions): MeshPhysic
             float edge = min(min(vPrintUv.x, 1.0 - vPrintUv.x), min(vPrintUv.y, 1.0 - vPrintUv.y));
             float line = 1.0 - smoothstep(0.0, fwidth(edge) * 2.0, edge);
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.75, 0.16, 0.04), line * uOutline);
+          }
+          if (uSelectionBox.z > 0.0) {
+            vec2 fromCenter = vPrintUv * uPrintAreaMm - uSelectionBox.xy;
+            float c = cos(uSelectionRotation);
+            float s = sin(uSelectionRotation);
+            vec2 local = vec2(c * fromCenter.x + s * fromCenter.y, -s * fromCenter.x + c * fromCenter.y);
+            vec2 outside = abs(local) - uSelectionBox.zw;
+            float distanceToEdge = abs(max(outside.x, outside.y));
+            float selectionLine = 1.0 - smoothstep(0.0, fwidth(distanceToEdge) * 1.5, distanceToEdge);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.0, 0.23, 1.0), selectionLine);
           }
         }`,
       )

@@ -5,10 +5,10 @@ import { useStore } from 'zustand';
 import type { Canvas2DLike } from '@/core/compositor/canvasLike';
 import { elementBox } from '@/core/compositor/elementBounds';
 import {
-  clampToArea,
   containsPoint,
   CORNERS,
   cornerPosition,
+  moveWithinArea,
   rotationFromPointer,
   rotationHandlePosition,
   scaleFromCorner,
@@ -24,7 +24,6 @@ const HANDLE_RADIUS_PX = 7;
 const ROTATE_GAP_PX = 26;
 /** Dotyk jest mniej precyzyjny, więc obszar chwytania jest większy niż widoczny uchwyt. */
 const HANDLE_HIT_RADIUS_PX = 18;
-const CENTER_SNAP_MM = 2.5;
 const ZERO_ROTATION_SNAP_DEG = 2.5;
 const ROTATION_SNAP_STEP_DEG = 15;
 const MIN_TEXT_SIZE_MM = 3;
@@ -134,20 +133,15 @@ export function SelectionOverlay({
     const state = store.getState();
 
     if (current.kind === 'move') {
-      const moved = clampToArea(
+      const moved = moveWithinArea(
         {
           x: current.element.xMm + point.x - current.start.x,
           y: current.element.yMm + point.y - current.start.y,
         },
         area,
       );
-      const snapX = Math.abs(moved.x - area.widthMm / 2) <= CENTER_SNAP_MM;
-      const snapY = Math.abs(moved.y - area.heightMm / 2) <= CENTER_SNAP_MM;
-      setGuides({ x: snapX, y: snapY });
-      state.updateSelected({
-        xMm: snapX ? area.widthMm / 2 : moved.x,
-        yMm: snapY ? area.heightMm / 2 : moved.y,
-      });
+      setGuides({ x: moved.snappedX, y: moved.snappedY });
+      state.updateSelected({ xMm: moved.point.x, yMm: moved.point.y });
       return;
     }
 

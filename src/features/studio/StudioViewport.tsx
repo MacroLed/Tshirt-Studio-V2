@@ -2,15 +2,21 @@
 
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { NeutralToneMapping, SRGBColorSpace, Vector3, type PerspectiveCamera } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import { useStore } from 'zustand';
+import type { Canvas2DLike } from '@/core/compositor/canvasLike';
+import { elementBox } from '@/core/compositor/elementBounds';
 import type { DesignDocument, PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
+import { stepCameraFlight, type CameraGoal } from '@/three/cameraFlight';
 import { GarmentMesh } from '@/three/GarmentMesh';
 import type { PrintTextureManager } from '@/three/PrintTextureManager';
 import { StudioLights } from '@/three/StudioLights';
 import { useContextRestore } from '@/three/useContextRestore';
+import type { StudioStore } from './studioStore';
+import { ViewportDrag } from './ViewportDrag';
 
 const FLY_RATE = 5;
 const BODY_WIDTH_WITH_SLEEVES_M = 0.74;
@@ -21,11 +27,20 @@ function RestorableLights() {
 }
 
 /** Płynny przelot kamery do wybranego obszaru; złapanie myszą oddaje sterowanie użytkownikowi. */
-function CameraRig({ manifest, active }: { manifest: GarmentManifest; active: PlacementId }) {
+function CameraRig({
+  manifest,
+  active,
+  viewRequest,
+}: {
+  manifest: GarmentManifest;
+  active: PlacementId;
+  /** Licznik kliknięć zakładek: zakładka już aktywna też ma przywrócić widok po ręcznym obrocie. */
+  viewRequest: number;
+}) {
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls) as OrbitControlsImpl | null;
   const invalidate = useThree((state) => state.invalidate);
-  const flight = useRef<{ position: Vector3; target: Vector3 } | null>(null);
+  const flight = useRef<CameraGoal | null>(null);
   const firstRun = useRef(true);
 
   useEffect(() => {
@@ -50,7 +65,7 @@ function CameraRig({ manifest, active }: { manifest: GarmentManifest; active: Pl
       flight.current = { position, target };
     }
     invalidate();
-  }, [active, manifest, camera, controls, invalidate]);
+  }, [active, viewRequest, manifest, camera, controls, invalidate]);
 
   useEffect(() => {
     if (!controls) return;
@@ -65,15 +80,9 @@ function CameraRig({ manifest, active }: { manifest: GarmentManifest; active: Pl
     const goal = flight.current;
     if (!goal || !controls) return;
     const alpha = 1 - Math.exp(-FLY_RATE * Math.min(delta, 1 / 20));
-    camera.position.lerp(goal.position, alpha);
-    controls.target.lerp(goal.target, alpha);
+    const arrived = stepCameraFlight(camera.position, controls.target, goal, alpha);
     controls.update();
-    if (camera.position.distanceTo(goal.position) < 0.002 && controls.target.distanceTo(goal.target) < 0.002) {
-      camera.position.copy(goal.position);
-      controls.target.copy(goal.target);
-      controls.update();
-      flight.current = null;
-    }
+    if (arrived) flight.current = null;
     state.invalidate();
   });
 
@@ -91,18 +100,35 @@ export default function StudioViewport({
   manifest,
   document,
   textures,
+  store,
+  hostRef,
+  showGuides,
 }: {
   manifest: GarmentManifest;
   document: DesignDocument;
   textures: PrintTextureManager;
+  store: StudioStore;
+  hostRef: RefObject<HTMLElement | null>;
+  /** W trybie podglądu koszulka wygląda jak gotowa: bez obrysów i edycji. */
+  showGuides: boolean;
 }) {
   const active = document.editor.activePlacement;
+  const selectedId = useStore(store, (state) => state.selectedId);
+  const viewRequest = useStore(store, (state) => state.viewRequest);
+  const [measure] = useState<Canvas2DLike<CanvasImageSource> | null>(() =>
+    window.document.createElement('canvas').getContext('2d'),
+  );
+  const selected = document.placements[active].elements.find((element) => element.id === selectedId);
+  const selection = useMemo(
+    () => (showGuides && selected && measure ? { placement: active, box: elementBox(measure, selected) } : null),
+    [showGuides, selected, measure, active],
+  );
   return (
     <Canvas
       shadows
       dpr={[1, 2]}
       frameloop="demand"
-      camera={{ position: [0, -0.32, 1.6], fov: 35, near: 0.05, far: 20 }}
+      camera={{ position: [0, -0.3, 1.7], fov: 35, near: 0.05, far: 20 }}
       // Khronos PBR Neutral: stworzony do produktów, zachowuje kolor koszulki bez przekłamań.
       gl={{ antialias: true, toneMapping: NeutralToneMapping, outputColorSpace: SRGBColorSpace }}
     >
@@ -114,7 +140,8 @@ export default function StudioViewport({
           fabricColor={document.fabricColor}
           pose="display"
           textures={textures}
-          activePlacement={active}
+          activePlacement={showGuides ? active : null}
+          selection={selection}
         />
       </Suspense>
       <RepaintOnChange document={document} />
@@ -126,7 +153,8 @@ export default function StudioViewport({
         minDistance={0.45}
         maxDistance={4.2}
       />
-      <CameraRig manifest={manifest} active={active} />
+      <CameraRig manifest={manifest} active={active} viewRequest={viewRequest} />
+      <ViewportDrag store={store} manifest={manifest} hostRef={hostRef} enabled={showGuides} />
     </Canvas>
   );
 }

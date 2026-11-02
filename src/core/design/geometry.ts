@@ -78,6 +78,29 @@ export function rotationFromPointer(center: Point, pointer: Point, snapDegrees =
   return ((snapped + 540) % 360) - 180;
 }
 
+export interface AreaMove {
+  point: Point;
+  /** Czy pozycja została przyciągnięta do pionowej i poziomej osi obszaru. */
+  snappedX: boolean;
+  snappedY: boolean;
+}
+
+/** Docelowa pozycja przeciąganego elementu: w obszarze i z przyciąganiem do jego osi. */
+export function moveWithinArea(
+  wanted: Point,
+  area: { widthMm: number; heightMm: number },
+  snapMm = 2.5,
+): AreaMove {
+  const clamped = clampToArea(wanted, area);
+  const snappedX = Math.abs(clamped.x - area.widthMm / 2) <= snapMm;
+  const snappedY = Math.abs(clamped.y - area.heightMm / 2) <= snapMm;
+  return {
+    point: { x: snappedX ? area.widthMm / 2 : clamped.x, y: snappedY ? area.heightMm / 2 : clamped.y },
+    snappedX,
+    snappedY,
+  };
+}
+
 /** Trzyma środek w polu nadruku, dzięki czemu elementu nie da się zgubić poza obszarem. */
 export function clampToArea(point: Point, area: { widthMm: number; heightMm: number }): Point {
   return {

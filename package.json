@@ -16,7 +16,8 @@
     "garment:inspect": "node assets-src/garments/inspect_glb.mjs",
     "posters": "node scripts/posters/generate.mjs",
     "perf": "node scripts/perf/measure.mjs",
-    "check:gpu": "node scripts/perf/check-gpu.mjs"
+    "check:gpu": "node scripts/perf/check-gpu.mjs",
+    "check:placements": "node scripts/perf/check-placements.mjs"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",
