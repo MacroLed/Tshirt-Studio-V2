@@ -4,6 +4,8 @@ import {
   LinearFilter,
   LinearMipmapLinearFilter,
   NoColorSpace,
+  DataTexture,
+  type Texture,
 } from 'three';
 import { renderPlacement, type RenderReport } from '@/core/compositor/renderPlacement';
 import { PLACEMENT_IDS, type DesignDocument, type PlacementId } from '@/core/design/schema';
@@ -21,6 +23,19 @@ export interface PrintTextureOptions {
   maxTexturePx?: number;
   anisotropy?: number;
   resolveImage?: (assetId: string) => CanvasImageSource | null;
+  /** Tworzy płótna tylko dla obszarów tego projektu; dla wieszaka, gdzie wzór się nie zmienia. */
+  onlyPlacementsOf?: DesignDocument;
+}
+
+let emptyPrintTexture: DataTexture | null = null;
+
+/** Wspólna, przezroczysta tekstura obszarów bez nadruku: nie zajmuje pamięci na każdą koszulkę. */
+function getEmptyPrintTexture(): DataTexture {
+  if (!emptyPrintTexture) {
+    emptyPrintTexture = new DataTexture(new Uint8Array(4), 1, 1);
+    emptyPrintTexture.needsUpdate = true;
+  }
+  return emptyPrintTexture;
 }
 
 function configureTexture(texture: CanvasTexture, anisotropy: number): void {
@@ -47,6 +62,9 @@ export class PrintTextureManager {
     for (const placementId of PLACEMENT_IDS) {
       const placement = manifest.placements[placementId];
       if (!placement) continue;
+      const only = options.onlyPlacementsOf;
+      const isEmpty = only !== undefined && only.placements[placementId].elements.length === 0;
+      if (isEmpty) continue;
       const longestSide = Math.min(placement.previewTexturePx, options.maxTexturePx ?? placement.previewTexturePx);
       const size = canvasSizeForLongestSide(placement.printArea, longestSide);
       const canvas = document.createElement('canvas');
@@ -60,10 +78,8 @@ export class PrintTextureManager {
     }
   }
 
-  getTexture(placementId: PlacementId): CanvasTexture {
-    const slot = this.slots.get(placementId);
-    if (!slot) throw new Error(`Model nie ma obszaru: ${placementId}`);
-    return slot.texture;
+  getTexture(placementId: PlacementId): Texture {
+    return this.slots.get(placementId)?.texture ?? getEmptyPrintTexture();
   }
 
   getCanvas(placementId: PlacementId): HTMLCanvasElement {

@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   reporter: 'list',
+  // Programowy WebGL obciąża cały procesor, więc sceny 3D testujemy po kolei.
+  workers: 1,
+  timeout: 60_000,
   use: {
     baseURL: 'http://localhost:3100',
     // Programowy WebGL: testy nie zależą od karty graficznej komputera.

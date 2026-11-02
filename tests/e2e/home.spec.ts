@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { disableWebGL } from '../helpers/noWebGL';
 
-test('strona główna pokazuje produkty z katalogu', async ({ page }, testInfo) => {
+test('lista pod wieszakiem pokazuje produkty z katalogu', async ({ page }, testInfo) => {
+  await disableWebGL(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(page.getByTestId('product-card')).toHaveCount(8);
-  await expect(page.getByRole('heading', { name: 'Atelier' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Lista produktów' }).getByRole('heading', { name: 'Atelier' })).toBeVisible();
   await expect(page.getByText('Prototyp.')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('home.png'), fullPage: true });
 });
@@ -18,6 +20,7 @@ test('strona działa bez JavaScriptu, więc treść pochodzi z serwera', async (
 });
 
 test('układ nie wywołuje poziomego przewijania', async ({ page }) => {
+  await disableWebGL(page);
   await page.goto('/');
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

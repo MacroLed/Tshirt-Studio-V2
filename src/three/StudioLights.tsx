@@ -8,11 +8,11 @@ import { Environment, Lightformer } from '@react-three/drei';
  * koszulki na ekranie jest bliski wzorcowi; pilnuje tego test w tests/e2e/garment.spec.ts.
  * Boczne światło główne wydobywa fałdy tkaniny.
  */
-export function StudioLights() {
+export function StudioLights({ castShadow = true }: { castShadow?: boolean }) {
   return (
     <>
       <ambientLight intensity={0.55} />
-      <directionalLight position={[-2, 1.4, 1.6]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
+      <directionalLight position={[-2, 1.4, 1.6]} intensity={1.5} castShadow={castShadow} shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
       <directionalLight position={[2, 0.5, 1.5]} intensity={0.35} />
       <directionalLight position={[1, 1, -2]} intensity={0.9} />
       <directionalLight position={[-1, 0.3, -2]} intensity={0.4} />

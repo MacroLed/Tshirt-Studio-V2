@@ -9,7 +9,15 @@ const TILE_CM = 0.3;
  * Generuje mapę normalnych splotu dzianiny w kodzie, więc nie ma pliku do pobrania.
  * Mipmapy wygaszają wzór z daleka, dzięki czemu nie powstaje mora.
  */
-export function createKnitNormalTexture(): DataTexture {
+export function getKnitNormalTexture(): DataTexture {
+  // Wszystkie koszulki dzielą jedną teksturę: to kilka kilobajtów, które zostają na całą sesję.
+  shared ??= createKnitNormalTexture();
+  return shared;
+}
+
+let shared: DataTexture | null = null;
+
+function createKnitNormalTexture(): DataTexture {
   const data = new Uint8Array(TILE_PX * TILE_PX * 4);
   const height = (x: number, y: number) => {
     const u = (x / TILE_PX) * Math.PI * 2;

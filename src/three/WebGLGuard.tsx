@@ -13,7 +13,15 @@ function detectWebGL(): boolean {
 
 const noopSubscribe = () => () => undefined;
 
-class SceneErrorBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+/** Na serwerze zakładamy obsługę WebGL; właściwe sprawdzenie odbywa się w przeglądarce. */
+export function useWebGLSupported(): boolean {
+  return useSyncExternalStore(noopSubscribe, detectWebGL, () => true);
+}
+
+class SceneErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode; onFailure?: () => void },
+  { failed: boolean }
+> {
   state = { failed: false };
 
   static getDerivedStateFromError() {
@@ -22,6 +30,7 @@ class SceneErrorBoundary extends Component<{ fallback: ReactNode; children: Reac
 
   componentDidCatch(error: unknown) {
     console.error('Błąd sceny 3D', error);
+    this.props.onFailure?.();
   }
 
   render() {
@@ -30,9 +39,20 @@ class SceneErrorBoundary extends Component<{ fallback: ReactNode; children: Reac
 }
 
 /** Pokazuje widok zastępczy, gdy brakuje WebGL 2 albo scena 3D zgłosi błąd. */
-export function WebGLGuard({ fallback, children }: { fallback: ReactNode; children: ReactNode }) {
-  // Na serwerze zakładamy brak błędu; właściwe sprawdzenie odbywa się w przeglądarce.
-  const supported = useSyncExternalStore(noopSubscribe, detectWebGL, () => true);
+export function WebGLGuard({
+  fallback,
+  children,
+  onFailure,
+}: {
+  fallback: ReactNode;
+  children: ReactNode;
+  onFailure?: () => void;
+}) {
+  const supported = useWebGLSupported();
   if (!supported) return fallback;
-  return <SceneErrorBoundary fallback={fallback}>{children}</SceneErrorBoundary>;
+  return (
+    <SceneErrorBoundary fallback={fallback} onFailure={onFailure}>
+      {children}
+    </SceneErrorBoundary>
+  );
 }

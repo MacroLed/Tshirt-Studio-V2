@@ -3,6 +3,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { expect, test, type Page } from '@playwright/test';
 import { buildSync } from 'esbuild';
 import type { PlacementId } from '../../src/core/design/schema';
+import { disableWebGL } from '../helpers/noWebGL';
 import type { Marker } from './calibration-entry';
 
 const bundle = buildSync({
@@ -24,7 +25,8 @@ function dominantChannel([r, g, b]: readonly number[]): number {
 }
 
 async function calibrate(page: Page, placementId: PlacementId, markers: Marker[]) {
-  await page.goto('/');
+  // Lekka strona z tej samej domeny: test ma własną scenę, wieszak tylko by go spowalniał.
+  await page.goto('/nie-ma-takiej-strony');
   await page.addScriptTag({ content: bundle });
   return page.evaluate(([p, m]) => window.runCalibration(p, m), [placementId, markers] as const);
 }
@@ -175,8 +177,9 @@ test.describe('strona podglądu', () => {
   });
 
   test('lista produktów prowadzi do podglądu', async ({ page }) => {
+    await disableWebGL(page);
     await page.goto('/');
-    await page.getByRole('link', { name: 'Atelier' }).click();
+    await page.getByRole('region', { name: 'Lista produktów' }).getByRole('link', { name: 'Atelier' }).click();
     await expect(page).toHaveURL(/\/preview\/atelier$/);
     await expect(page.getByRole('heading', { name: 'Atelier' })).toBeVisible();
   });

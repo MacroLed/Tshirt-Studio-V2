@@ -1,30 +1,40 @@
+import type { GarmentManifest } from '@/core/garment/manifest';
 import { RackFallback } from '@/features/rack/RackFallback';
+import { RackStage } from '@/features/rack/RackStage';
 import { catalogRepository } from '@/server/catalog';
+import { getGarmentManifest } from '@/server/garments';
 import { PrototypeNotice } from '@/ui/PrototypeNotice';
 
 export default async function HomePage() {
   const products = await catalogRepository.listProducts();
 
+  const manifests: Record<string, GarmentManifest> = {};
+  for (const product of products) {
+    const manifest = getGarmentManifest(product.garmentVersionId);
+    if (!manifest) throw new Error(`Brak modelu ${product.garmentVersionId} dla produktu ${product.id}`);
+    manifests[product.garmentVersionId] = manifest;
+  }
+
   return (
-    <>
-      <header className="flex items-baseline justify-between px-4 py-5 sm:px-8">
-        <span className="font-display text-2xl">3D T-Shirt Studio</span>
-      </header>
-      <main>
-        <section className="px-4 pb-10 pt-6 sm:px-8 sm:pb-16 sm:pt-12">
-          <p className="text-eyebrow uppercase tracking-eyebrow text-muted">Kolekcja</p>
-          <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[1.05] sm:text-7xl">
-            Wybierz koszulkę. Zaprojektuj ją po swojemu.
-          </h1>
-          <div className="mt-6 max-w-xl">
+    <main>
+      <RackStage products={products} manifests={manifests}>
+        <p className="font-display text-2xl">3D T-Shirt Studio</p>
+        <h1 className="mt-2 max-w-[20ch] font-display text-2xl leading-[1.1] text-muted sm:mt-1 sm:max-w-none sm:text-3xl">
+          Wybierz koszulkę. Zaprojektuj ją po swojemu.
+        </h1>
+      </RackStage>
+      <section aria-label="Lista produktów">
+        <div className="px-4 py-8 sm:px-8">
+          <h2 className="font-display text-3xl">Wszystkie koszulki</h2>
+          <div className="mt-4 max-w-xl">
             <PrototypeNotice>
               Produkty i ceny są przykładowe, a zakup nie jest jeszcze możliwy. Kliknij nazwę produktu, aby zobaczyć
-              koszulkę 3D. Wieszak 3D zastąpi ten widok w kolejnych krokach.
+              koszulkę 3D z bliska.
             </PrototypeNotice>
           </div>
-        </section>
+        </div>
         <RackFallback products={products} />
-      </main>
-    </>
+      </section>
+    </main>
   );
 }

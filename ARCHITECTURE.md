@@ -120,11 +120,11 @@ tests/                       unit, visual (złote obrazy), e2e
 | Aspekt | Rozwiązanie |
 |---|---|
 | Dane | `CatalogRepository`: w ETAPIE 1 statyczny JSON (oznaczony jako tymczasowy), później Supabase. Scena nie zawiera żadnych produktów na stałe |
-| Geometria | Wspólna dla wszystkich koszulek, osobne materiały. Stojak i wieszaki z Blendera, wieszaki przez instancing |
+| Geometria | Wspólna dla wszystkich koszulek, osobne materiały. Stojak i wieszaki generowane w kodzie, bo promień zależy od liczby produktów, a dodanie koszulki nie może wymagać Blendera. Kształt wieszaka jest ten sam co w symulacji tkaniny. Wieszaki przez instancing |
 | Wzór produktu | `original_design` to zwykły `DesignDocument`, renderowany tym samym kompozytorem |
 | Tożsamość po wyborze | Edytor startuje z kopią tego dokumentu, więc wzór, kolor i krój zostają bez dodatkowej logiki |
-| Hover | Raycast na lekkich bryłach pomocniczych (nie po 30 tys. trójkątów na każdy ruch myszy), wysunięcie koszulki, poświata, etykieta w DOM |
-| Kliknięcie | Lot kamery, panel produktu, „Personalizuj”, przejście do `/studio` z płynnym przenikaniem |
+| Hover | Raycast na lekkich bryłach pomocniczych (nie po 30 tys. trójkątów na każdy ruch myszy). Ruch jak od ręki w sklepie: koszulka wychyla się na haku i obraca do kamery, sąsiedzi rozsuwają się po obręczy, wszystko na sprężynach. Etykieta w DOM. Na dotyku pierwsze dotknięcie |
+| Kliknięcie | Koszulka zdejmowana ze stojaka przed kamerę, panel produktu, „Personalizuj”, przejście do `/studio` z płynnym przenikaniem |
 | Światło | Własne softboxy (`Lightformer`), bez pobierania HDRI z zewnętrznego CDN; miękkie cienie |
 | Szybki start | Strona i lista produktów renderowane na serwerze z obrazem-plakatem; scena 3D ładuje się leniwie i płynnie go zastępuje |
 | Brak WebGL | `RackFallback`: siatka produktów, w pełni użyteczna. Obsługa utraty kontekstu GPU |

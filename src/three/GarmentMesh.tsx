@@ -7,7 +7,7 @@ import { ClampToEdgeWrapping, Mesh, NoColorSpace, type MeshPhysicalMaterial, typ
 import { PLACEMENT_IDS, type DesignDocument, type PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { createFabricMaterial } from './fabricMaterial';
-import { createKnitNormalTexture } from './knitTexture';
+import { getKnitNormalTexture } from './knitTexture';
 import { PrintTextureManager } from './PrintTextureManager';
 
 interface GarmentMeshProps {
@@ -15,6 +15,8 @@ interface GarmentMeshProps {
   design: DesignDocument;
   fabricColor: string;
   maxTexturePx?: number;
+  /** Wzór się nie zmieni, więc płótna powstają tylko dla obszarów z nadrukiem. */
+  onlyUsedPlacements?: boolean;
 }
 
 function placementForMaterial(manifest: GarmentManifest, name: string): PlacementId | null {
@@ -22,7 +24,7 @@ function placementForMaterial(manifest: GarmentManifest, name: string): Placemen
 }
 
 /** Koszulka 3D: geometria z GLB, materiał i nadruk tworzone w kodzie na podstawie dokumentu. */
-export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx }: GarmentMeshProps) {
+export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx, onlyUsedPlacements }: GarmentMeshProps) {
   // Dekoder Draco nie jest potrzebny; Meshopt jest wbudowany w pakiet, bez pobierania z CDN.
   const { scene } = useGLTF(manifest.files.hanging, false, true);
   const [detailMap, aoMap] = useTexture([manifest.files.detailMap, manifest.files.aoMap], (loaded) => {
@@ -37,8 +39,17 @@ export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx }: Gar
   // Scena renderuje się na żądanie, więc każda zmiana poza pętlą musi poprosić o nową klatkę.
   const invalidate = useThree((state) => state.invalidate);
 
-  const textures = useMemo(() => new PrintTextureManager(manifest, { maxTexturePx }), [manifest, maxTexturePx]);
-  const knitMap = useMemo(() => createKnitNormalTexture(), []);
+  const textures = useMemo(
+    () =>
+      new PrintTextureManager(manifest, {
+        maxTexturePx,
+        ...(onlyUsedPlacements ? { onlyPlacementsOf: design } : {}),
+      }),
+    // Przy onlyUsedPlacements projekt jest z założenia stały, więc nie przebudowujemy płócien.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [manifest, maxTexturePx, onlyUsedPlacements],
+  );
+  const knitMap = getKnitNormalTexture();
 
   const { root, materials } = useMemo(() => {
     const clone: Object3D = scene.clone(true);
@@ -88,9 +99,8 @@ export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx }: Gar
   useEffect(
     () => () => {
       textures.dispose();
-      knitMap.dispose();
     },
-    [textures, knitMap],
+    [textures],
   );
 
   return <primitive object={root} />;
