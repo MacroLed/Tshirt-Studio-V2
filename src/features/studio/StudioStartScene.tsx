@@ -9,6 +9,7 @@ import type { GarmentManifest } from '@/core/garment/manifest';
 import { GarmentMesh } from '@/three/GarmentMesh';
 import { loadPrintFonts } from '@/three/printFonts';
 import { StudioLights } from '@/three/StudioLights';
+import { useContextRestore } from '@/three/useContextRestore';
 
 /** Środek koszulki wiszącej od 0 do -72 cm w układzie modelu. */
 const TARGET: [number, number, number] = [0, -0.34, 0];
@@ -17,6 +18,11 @@ interface StudioStartSceneProps {
   manifest: GarmentManifest;
   design: DesignDocument;
   fabricColor: string;
+}
+
+function RestorableLights() {
+  const contextGeneration = useContextRestore();
+  return <StudioLights key={contextGeneration} />;
 }
 
 export default function StudioStartScene({ manifest, design, fabricColor }: StudioStartSceneProps) {
@@ -46,7 +52,7 @@ export default function StudioStartScene({ manifest, design, fabricColor }: Stud
       gl={{ antialias: true, toneMapping: NeutralToneMapping, outputColorSpace: SRGBColorSpace }}
       data-testid="garment-canvas"
     >
-      <StudioLights />
+      <RestorableLights />
       <Suspense fallback={null}>
         {fontsReady && <GarmentMesh manifest={manifest} design={design} fabricColor={fabricColor} />}
       </Suspense>

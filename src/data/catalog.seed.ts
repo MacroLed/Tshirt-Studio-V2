@@ -196,7 +196,7 @@ export const catalogSeed: unknown[] = SPECS.map((spec) => ({
   name: spec.name,
   description: spec.description,
   garmentVersionId: GARMENT_VERSION_ID,
-  previewPath: null,
+  previewPath: `/posters/${spec.slug}.webp`,
   category: spec.category,
   basePriceMinor: spec.price,
   currency: 'PLN',

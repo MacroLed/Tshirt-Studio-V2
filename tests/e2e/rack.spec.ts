@@ -1,3 +1,4 @@
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { expect, test } from '@playwright/test';
 import { disableWebGL } from '../helpers/noWebGL';
 
@@ -181,6 +182,105 @@ test.describe('wieszak 3D na stronie głównej', () => {
     expect(after.created).toBeLessThanOrEqual(2);
   });
 
+  test('plakat jest od razu, a sterowanie pojawia się dopiero ze sceną', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Ta sama logika, wystarczy jedno uruchomienie');
+    // Wstrzymanie modelu pozwala zobaczyć stan sprzed załadowania sceny.
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/models/regular/hanging.glb', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const stage = page.getByTestId('rack-stage');
+    const poster = page.getByTestId('rack-poster').locator('img');
+    await expect(poster).toBeVisible();
+    await expect.poll(() => poster.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    await expect(stage).toHaveAttribute('data-scene-ready', 'false');
+    await expect(page.getByRole('status')).toContainText('Ładowanie');
+    await expect(page.getByRole('button', { name: 'Następna koszulka' })).toHaveCount(0);
+
+    release();
+    await expect(stage).toHaveAttribute('data-scene-ready', 'true', { timeout: 45_000 });
+    await expect(page.getByRole('button', { name: 'Następna koszulka' })).toBeVisible();
+    await expect(page.getByTestId('rack-poster')).toHaveCSS('opacity', '0');
+  });
+
+  test('bez JavaScriptu plakat i lista nadal działają', async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.getByTestId('rack-poster').locator('img')).toBeVisible();
+    await expect(page.getByTestId('product-card')).toHaveCount(8);
+    await expect(page.getByRole('button', { name: 'Następna koszulka' })).toHaveCount(0);
+    await context.close();
+  });
+
+  test('tryb oszczędzania danych: 3D dopiero na prośbę', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Ta sama logika, wystarczy jedno uruchomienie');
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'connection', { value: { saveData: true } });
+    });
+    const models: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('hanging.glb')) models.push(request.url());
+    });
+    await page.goto('/');
+    const start = page.getByTestId('start-3d');
+    await expect(start).toBeVisible();
+    await expect(page.locator('canvas')).toHaveCount(0);
+    expect(models).toEqual([]);
+    await start.click();
+    await expect(page.getByTestId('rack-stage')).toHaveAttribute('data-scene-ready', 'true', { timeout: 45_000 });
+    expect(models.length).toBeGreaterThan(0);
+  });
+
+  test('po utracie kontekstu GPU scena wraca', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Ta sama logika, wystarczy jedno uruchomienie');
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    await expect(stage).toHaveAttribute('data-scene-ready', 'true', { timeout: 45_000 });
+    await page.waitForTimeout(1500);
+    const canvas = stage.locator('canvas');
+    const box = (await stage.boundingBox())!;
+    const clip = { x: box.width * 0.3, y: box.height * 0.25, width: box.width * 0.4, height: box.height * 0.5 };
+    const snapshot = async () => {
+      const decoded = await loadImage(await page.screenshot({ clip, timeout: 60_000 }));
+      const surface = createCanvas(decoded.width, decoded.height).getContext('2d');
+      surface.drawImage(decoded, 0, 0);
+      const data = surface.getImageData(0, 0, decoded.width, decoded.height).data;
+      let ink = 0;
+      const sum = [0, 0, 0];
+      for (let i = 0; i < data.length; i += 4) {
+        for (let channel = 0; channel < 3; channel += 1) sum[channel]! += data[i + channel]!;
+        if (Math.abs(data[i]! - 200) + Math.abs(data[i + 1]! - 197) + Math.abs(data[i + 2]! - 189) > 40) ink += 1;
+      }
+      const pixels = data.length / 4;
+      return { ink: ink / pixels, color: sum.map((value) => value / pixels) };
+    };
+    const before = await snapshot();
+    expect(before.ink).toBeGreaterThan(0.1);
+
+    await canvas.evaluate(async (element: HTMLCanvasElement) => {
+      const gl = element.getContext('webgl2')!;
+      const extension = gl.getExtension('WEBGL_lose_context')!;
+      extension.loseContext();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      extension.restoreContext();
+    });
+    await page.waitForTimeout(6000);
+    const after = await snapshot();
+    const message = `przed ${JSON.stringify(before)}, po ${JSON.stringify(after)}`;
+    console.log(message);
+    expect(Math.abs(after.ink - before.ink), message).toBeLessThan(0.02);
+    // Kolor to najczulszy wskaźnik: bez odbudowy mapy środowiska oświetlenie wraca inne.
+    for (let channel = 0; channel < 3; channel += 1) {
+      expect(Math.abs(after.color[channel]! - before.color[channel]!), message).toBeLessThan(4);
+    }
+  });
+
   test('najechanie: koszulka reaguje, a etykieta pokazuje nazwę', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Telefon nie ma najechania, sprawdza to test dotyku');
     await page.goto('/');
@@ -205,6 +305,42 @@ test.describe('wieszak 3D na stronie głównej', () => {
     await page.mouse.move(8, box.height * 0.5);
     await expect(stage).toHaveAttribute('data-hovered', '');
     await expect(page.getByTestId('rack-tooltip')).toHaveCSS('opacity', '0');
+  });
+
+  test('podpis w rogu opisuje koszulkę pod kursorem, także poza środkiem', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Telefon nie ma najechania, sprawdza to test dotyku');
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    const caption = page.getByTestId('rack-caption');
+    await expect(stage).toHaveAttribute('data-scene-ready', 'true', { timeout: 45_000 });
+    await expect(caption).toContainText('Atelier');
+    await expect(caption).toContainText('149,00');
+    const box = (await stage.boundingBox())!;
+
+    // Nocturne wisi na prawo od środka, a na pierwszym planie zostaje Atelier.
+    await page.mouse.move(box.width * 0.73, box.height * 0.55);
+    await expect(stage).toHaveAttribute('data-hovered', 'nocturne');
+    await expect(stage).toHaveAttribute('data-focused', 'atelier');
+    await expect(caption).toContainText('Nocturne');
+    await expect(caption).toContainText('159,00');
+    await expect(caption).toContainText('Typografia');
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: testInfo.outputPath('caption-hover.png'), timeout: 60_000 });
+
+    // Inna koszulka z innej kategorii, żeby sprawdzić wszystkie pola.
+    await page.mouse.move(box.width * 0.27, box.height * 0.55);
+    await expect(stage).not.toHaveAttribute('data-hovered', 'nocturne');
+    await expect(stage).not.toHaveAttribute('data-hovered', '');
+    const hovered = await stage.getAttribute('data-hovered');
+    await expect(caption).toContainText(new RegExp(hovered!, 'i'));
+
+    await page.mouse.move(8, box.height * 0.5);
+    await expect(stage).toHaveAttribute('data-hovered', '');
+    await expect(caption).toContainText('Atelier');
+
+    // Kliknięcie podpisu otwiera koszulkę, którą podpis właśnie pokazuje.
+    await page.getByTestId('focused-name').click();
+    await expect(page.getByTestId('product-panel').getByRole('heading', { name: 'Atelier' })).toBeVisible();
   });
 
   test('kliknięcie zdejmuje koszulkę, a tożsamość przechodzi do edytora', async ({ page }, testInfo) => {

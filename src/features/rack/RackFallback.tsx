@@ -1,7 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/core/catalog/schema';
 import { formatPrice } from '@/core/pricing/formatPrice';
-import { ProductSilhouette } from './ProductSilhouette';
 
 /**
  * Lista produktów renderowana na serwerze. Zostaje na stałe: zapewnia szybki start,
@@ -12,8 +12,19 @@ export function RackFallback({ products }: { products: Product[] }) {
     <ul className="grid grid-cols-2 gap-px bg-line md:grid-cols-4">
       {products.map((product) => (
         <li key={product.id} className="flex flex-col bg-canvas p-4 sm:p-6" data-testid="product-card">
-          <div className="aspect-square p-2">
-            <ProductSilhouette color={product.originalDesign.fabricColor} />
+          <div className="aspect-square">
+            {product.previewPath && (
+              // Plakaty są już w docelowym formacie i rozmiarze, więc nie wymagają przetwarzania.
+              <Image
+                src={product.previewPath}
+                alt={`Koszulka ${product.name}`}
+                width={640}
+                height={640}
+                loading="lazy"
+                unoptimized
+                className="h-full w-full object-contain"
+              />
+            )}
           </div>
           <p className="mt-4 text-eyebrow uppercase tracking-eyebrow text-muted">{product.category}</p>
           <h2 className="mt-1 font-display text-3xl leading-tight">

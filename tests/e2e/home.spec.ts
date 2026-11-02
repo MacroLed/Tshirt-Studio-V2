@@ -8,6 +8,15 @@ test('lista pod wieszakiem pokazuje produkty z katalogu', async ({ page }, testI
   await expect(page.getByTestId('product-card')).toHaveCount(8);
   await expect(page.getByRole('region', { name: 'Lista produktów' }).getByRole('heading', { name: 'Atelier' })).toBeVisible();
   await expect(page.getByText('Prototyp.')).toBeVisible();
+  // Każdy produkt ma plakat z prawdziwej sceny, który naprawdę się wczytuje.
+  const posters = page.getByRole('region', { name: 'Lista produktów' }).getByRole('img');
+  await expect(posters).toHaveCount(8);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  for (const poster of await posters.all()) {
+    await poster.scrollIntoViewIfNeeded();
+    await expect.poll(() => poster.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: testInfo.outputPath('home.png'), fullPage: true });
 });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Product } from '@/core/catalog/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { formatPrice } from '@/core/pricing/formatPrice';
@@ -9,14 +9,9 @@ import { useWebGLSupported, WebGLGuard } from '@/three/WebGLGuard';
 import { ProductPanel } from './ProductPanel';
 import type { RackControls } from './RackCanvas';
 
-const RackCanvas = dynamic(() => import('./RackCanvas'), {
-  ssr: false,
-  loading: () => (
-    <p className="absolute inset-0 grid place-items-center text-sm text-muted" role="status">
-      Ładowanie wieszaka 3D…
-    </p>
-  ),
-});
+const RackCanvas = dynamic(() => import('./RackCanvas'), { ssr: false });
+
+const POSTER_FADE_CLASS = 'transition-opacity duration-500 ease-studio';
 
 function ControlButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
@@ -32,7 +27,13 @@ function ControlButton({ label, onClick, children }: { label: string; onClick: (
   );
 }
 
-/** Pierwszy ekran strony: wieszak 3D z elementami sterowania w DOM, dostępnymi z klawiatury. */
+/** Tryb oszczędzania danych: scena 3D startuje dopiero na wyraźną prośbę. */
+function prefersSavingData(): boolean {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  return connection?.saveData === true;
+}
+
+/** Pierwszy ekran strony: plakat od razu, a wieszak 3D z elementami sterowania, gdy będzie gotowy. */
 export function RackStage({
   products,
   manifests,
@@ -50,11 +51,31 @@ export function RackStage({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [sceneFailed, setSceneFailed] = useState(false);
+  const [sceneRequested, setSceneRequested] = useState(false);
+  const [sceneOffered, setSceneOffered] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
   const [colorChoices, setColorChoices] = useState<Record<string, string>>({});
   const webGLSupported = useWebGLSupported();
   const focused = products[focusedIndex] ?? products[0];
   const hovered = hoveredIndex === null ? null : products[hoveredIndex];
   const selected = selectedIndex === null ? null : products[selectedIndex];
+  // Podpis opisuje koszulkę pod kursorem, a bez niej tę z pierwszego planu.
+  const captionIndex = hoveredIndex ?? focusedIndex;
+  const caption = products[captionIndex] ?? focused;
+
+  // Scena ładuje się dopiero, gdy przeglądarka skończy pierwsze rysowanie strony.
+  useEffect(() => {
+    const start = () => {
+      if (prefersSavingData()) setSceneOffered(true);
+      else setSceneRequested(true);
+    };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(start, { timeout: 1500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(start, 200);
+    return () => clearTimeout(id);
+  }, []);
 
   const fabricColors = useMemo(() => {
     const colors: Record<string, string> = {};
@@ -68,6 +89,7 @@ export function RackStage({
     setHoveredIndex(index);
     if (tooltip.current) tooltip.current.style.transform = `translate(${clientX + 16}px, ${clientY + 16}px)`;
   }, []);
+  const handleReady = useCallback(() => setSceneReady(true), []);
 
   // Bez sceny 3D nie ma czym sterować: zostaje nagłówek, a lista produktów jest tuż pod nim.
   if (!webGLSupported || sceneFailed) {
@@ -85,11 +107,13 @@ export function RackStage({
     <section
       aria-label="Wieszak z koszulkami"
       data-testid="rack-stage"
+      data-scene-ready={sceneReady}
       data-focused={focused?.slug}
       data-hovered={hovered?.slug ?? ''}
       data-selected={selected?.slug ?? ''}
       tabIndex={0}
       onKeyDown={(event) => {
+        if (!sceneReady) return;
         if (selected) {
           if (event.key === 'Escape') setSelectedIndex(null);
           return;
@@ -105,20 +129,35 @@ export function RackStage({
       }`}
       style={{ background: 'radial-gradient(ellipse at 50% 42%, #d3d0c8 0%, #c4c1b9 62%, #b4b1a9 100%)' }}
     >
-      <div className="absolute inset-0">
-        <WebGLGuard fallback={null} onFailure={() => setSceneFailed(true)}>
-          <RackCanvas
-            products={products}
-            manifests={manifests}
-            fabricColors={fabricColors}
-            selectedIndex={selectedIndex}
-            onFocusChange={setFocusedIndex}
-            onHoverChange={handleHover}
-            onActivate={setSelectedIndex}
-            controlsRef={controls}
-          />
-        </WebGLGuard>
-      </div>
+      {/* Render tej samej sceny: pierwszy widok bez pobierania modeli, także bez JavaScriptu. */}
+      <picture
+        data-testid="rack-poster"
+        className={`pointer-events-none absolute inset-0 ${POSTER_FADE_CLASS} ${sceneReady ? 'opacity-0' : 'opacity-100'}`}
+      >
+        <source media="(orientation: portrait)" srcSet="/posters/rack-mobile.webp" />
+        <img src="/posters/rack-desktop.webp" alt="" fetchPriority="high" className="h-full w-full object-cover" />
+      </picture>
+
+      {sceneRequested && (
+        <div
+          className={`absolute inset-0 ${POSTER_FADE_CLASS} ${sceneReady ? 'opacity-100' : 'opacity-0'}`}
+          data-testid="rack-scene"
+        >
+          <WebGLGuard fallback={null} onFailure={() => setSceneFailed(true)}>
+            <RackCanvas
+              products={products}
+              manifests={manifests}
+              fabricColors={fabricColors}
+              selectedIndex={selectedIndex}
+              onFocusChange={setFocusedIndex}
+              onHoverChange={handleHover}
+              onActivate={setSelectedIndex}
+              onReady={handleReady}
+              controlsRef={controls}
+            />
+          </WebGLGuard>
+        </div>
+      )}
 
       {/* Zdjęta koszulka zajmuje górę kadru, więc nagłówek na ten czas znika. */}
       <div
@@ -144,37 +183,62 @@ export function RackStage({
         )}
       </div>
 
-      {focused && !selected && (
+      {caption && !selected && (
         <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-4 p-4 sm:p-8">
-          <div className="min-w-0" aria-live="polite">
-            <p className="text-eyebrow uppercase tracking-eyebrow text-muted">{focused.category}</p>
+          <div className="min-w-0" aria-live="polite" data-testid="rack-caption">
+            <p className="text-eyebrow uppercase tracking-eyebrow text-muted">{caption.category}</p>
             <p className="mt-1 font-display text-4xl leading-none sm:text-5xl">
-              <button
-                type="button"
-                onClick={() => setSelectedIndex(focusedIndex)}
-                data-testid="focused-name"
-                className="cursor-pointer underline-offset-4 hover:underline"
-              >
-                {focused.name}
-              </button>
+              {sceneReady ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedIndex(captionIndex)}
+                  data-testid="focused-name"
+                  className="cursor-pointer underline-offset-4 hover:underline"
+                >
+                  {caption.name}
+                </button>
+              ) : (
+                caption.name
+              )}
             </p>
-            <p className="mt-2 text-sm font-medium">{formatPrice(focused.basePriceMinor, focused.currency)}</p>
+            <p className="mt-2 text-sm font-medium">{formatPrice(caption.basePriceMinor, caption.currency)}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <ControlButton label="Oddal" onClick={() => controls.current?.zoomBy(0.15)}>
-              −
-            </ControlButton>
-            <ControlButton label="Przybliż" onClick={() => controls.current?.zoomBy(-0.15)}>
-              +
-            </ControlButton>
-            <span className="mx-1 h-6 w-px bg-ink/25" aria-hidden="true" />
-            <ControlButton label="Poprzednia koszulka" onClick={() => controls.current?.previous()}>
-              ←
-            </ControlButton>
-            <ControlButton label="Następna koszulka" onClick={() => controls.current?.next()}>
-              →
-            </ControlButton>
-          </div>
+
+          {/* Sterowanie pojawia się dopiero ze sceną: przed nią przyciski nic by nie robiły. */}
+          {sceneReady && (
+            <div className="flex items-center gap-2">
+              <ControlButton label="Oddal" onClick={() => controls.current?.zoomBy(0.15)}>
+                −
+              </ControlButton>
+              <ControlButton label="Przybliż" onClick={() => controls.current?.zoomBy(-0.15)}>
+                +
+              </ControlButton>
+              <span className="mx-1 h-6 w-px bg-ink/25" aria-hidden="true" />
+              <ControlButton label="Poprzednia koszulka" onClick={() => controls.current?.previous()}>
+                ←
+              </ControlButton>
+              <ControlButton label="Następna koszulka" onClick={() => controls.current?.next()}>
+                →
+              </ControlButton>
+            </div>
+          )}
+
+          {sceneOffered && !sceneRequested && (
+            <button
+              type="button"
+              onClick={() => setSceneRequested(true)}
+              data-testid="start-3d"
+              className="cursor-pointer bg-ink px-5 py-3 text-sm font-medium text-on-accent hover:bg-accent"
+            >
+              Uruchom widok 3D
+            </button>
+          )}
+
+          {sceneRequested && !sceneReady && (
+            <p className="text-sm text-muted" role="status">
+              Ładowanie wieszaka 3D…
+            </p>
+          )}
         </div>
       )}
 

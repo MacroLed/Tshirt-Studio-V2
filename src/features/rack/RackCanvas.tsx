@@ -21,6 +21,7 @@ import { createFabricWave, type FabricWave } from '@/three/fabricMaterial';
 import { GarmentMesh } from '@/three/GarmentMesh';
 import { loadPrintFonts } from '@/three/printFonts';
 import { StudioLights } from '@/three/StudioLights';
+import { useContextRestore } from '@/three/useContextRestore';
 import { createCircularLayout, fitDistance, RAIL_Y, SHIRT_ORIGIN_Y, type RackLayout } from './rackLayout';
 import { RackInteraction } from './RackInteraction';
 import { RackMotion } from './RackMotion';
@@ -71,11 +72,31 @@ interface RackCanvasProps {
   onFocusChange: (index: number) => void;
   onHoverChange: (index: number | null, clientX: number, clientY: number) => void;
   onActivate: (index: number | null) => void;
+  /** Wszystkie koszulki są gotowe i narysowane, więc plakat może ustąpić scenie. */
+  onReady?: () => void;
   controlsRef: Ref<RackControls>;
+}
+
+/** Montuje się dopiero po załadowaniu wszystkich modeli wewnątrz Suspense. */
+function SceneReady({ onReady }: { onReady?: () => void }) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    invalidate();
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => onReady?.());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [invalidate, onReady]);
+  return null;
 }
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Telefony mają gęste ekrany, a wieszak to sporo koszulek: 1,5 wystarcza i odciąża GPU. */
+function maxPixelRatio(): number {
+  return window.matchMedia('(pointer: coarse)').matches ? 1.5 : 2;
 }
 
 function smoothstep(edge0: number, edge1: number, value: number): number {
@@ -96,6 +117,7 @@ function RackScene({
   interaction,
   onIndex,
   onZoom,
+  onReady,
   apiRef,
 }: {
   products: Product[];
@@ -106,8 +128,10 @@ function RackScene({
   interaction: RackInteraction;
   onIndex: (index: number) => void;
   onZoom: (zoom: number) => void;
+  onReady?: () => void;
   apiRef: Ref<SceneApi>;
 }) {
+  const contextGeneration = useContextRestore();
   const rack = useRef<Group>(null);
   const fog = useRef<Fog>(null);
   const arms = useRef<InstancedMesh>(null);
@@ -213,7 +237,7 @@ function RackScene({
   return (
     <>
       <fog ref={fog} attach="fog" args={[FOG_COLOR, 1, 10]} />
-      <StudioLights castShadow={false} />
+      <StudioLights key={contextGeneration} castShadow={false} />
       <RackFloorShadow radius={layout.radius} />
       <group ref={rack}>
         <RackFrame layout={layout} />
@@ -260,6 +284,7 @@ function RackScene({
               </group>
             );
           })}
+          <SceneReady onReady={onReady} />
         </Suspense>
       </group>
     </>
@@ -274,6 +299,7 @@ export default function RackCanvas({
   onFocusChange,
   onHoverChange,
   onActivate,
+  onReady,
   controlsRef,
 }: RackCanvasProps) {
   const layout = useMemo(() => createCircularLayout(products.length), [products.length]);
@@ -442,7 +468,7 @@ export default function RackCanvas({
       }}
     >
       <Canvas
-        dpr={[1, 2]}
+        dpr={[1, maxPixelRatio()]}
         frameloop="demand"
         camera={{ fov: FOV, near: 0.05, far: 30, position: [0, CAMERA_Y, 4] }}
         gl={{ antialias: true, alpha: true, toneMapping: NeutralToneMapping, outputColorSpace: SRGBColorSpace }}
@@ -456,6 +482,7 @@ export default function RackCanvas({
             motion={motion}
             interaction={interaction}
             apiRef={scene}
+            onReady={onReady}
             onIndex={onFocusChange}
             onZoom={(zoom) => {
               if (wrapper.current) wrapper.current.dataset.zoom = zoom.toFixed(3);
