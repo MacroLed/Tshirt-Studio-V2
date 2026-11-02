@@ -3,7 +3,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { FONT_CATALOG } from '@/core/compositor/fontCatalog';
+import type { AreaStatus } from '@/core/design/geometry';
 import type { DesignElement, TextElement } from '@/core/design/schema';
+import { STATUS_MESSAGES } from './elementStatus';
 import { PLACEMENT_LABELS } from './placementLabels';
 import type { StudioStore } from './studioStore';
 
@@ -71,8 +73,10 @@ function NumberField({
 export function PropertiesPanel({
   store,
   focusRequest,
+  statuses,
 }: {
   store: StudioStore;
+  statuses: ReadonlyMap<string, AreaStatus> | null;
   /** Identyfikator nowego tekstu: jego treść dostaje fokus, żeby od razu można było pisać. */
   focusRequest: string | null;
 }) {
@@ -111,6 +115,11 @@ export function PropertiesPanel({
                   className="block w-full cursor-pointer truncate px-2 py-1 text-left hover:bg-ink/10 aria-pressed:bg-ink aria-pressed:text-canvas"
                 >
                   {element.name}
+                  {statuses?.get(element.id) === 'clipped' && (
+                    <span className="ml-1.5" title={STATUS_MESSAGES.clipped} data-testid="element-warning">
+                      ⚠
+                    </span>
+                  )}
                 </button>
               </li>
             ))}

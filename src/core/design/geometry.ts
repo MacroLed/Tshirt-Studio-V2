@@ -101,6 +101,70 @@ export function moveWithinArea(
   };
 }
 
+export type AreaStatus = 'inside' | 'outsideSafe' | 'clipped';
+
+function halfExtents(box: ElementBox): { x: number; y: number } {
+  const radians = (box.rotationDeg * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(radians));
+  const sin = Math.abs(Math.sin(radians));
+  return {
+    x: (box.width / 2) * cos + (box.height / 2) * sin,
+    y: (box.width / 2) * sin + (box.height / 2) * cos,
+  };
+}
+
+/** Czy element mieści się w polu nadruku i w marginesie bezpiecznym; liczy się obrócony obrys. */
+export function areaStatus(
+  box: ElementBox,
+  area: { widthMm: number; heightMm: number },
+  safeMarginMm: number,
+  toleranceMm = 0.01,
+): AreaStatus {
+  const half = halfExtents(box);
+  const left = box.x - half.x;
+  const right = box.x + half.x;
+  const top = box.y - half.y;
+  const bottom = box.y + half.y;
+  const beyond = (limit: number) =>
+    left < limit - toleranceMm ||
+    top < limit - toleranceMm ||
+    right > area.widthMm - limit + toleranceMm ||
+    bottom > area.heightMm - limit + toleranceMm;
+  if (beyond(0)) return 'clipped';
+  return beyond(safeMarginMm) ? 'outsideSafe' : 'inside';
+}
+
+export interface AreaFit {
+  /** Mnożnik rozmiaru; nigdy nie powiększa elementu. */
+  ratio: number;
+  center: Point;
+}
+
+/** Najmniejsza zmiana, po której element mieści się w marginesie bezpiecznym. */
+export function fitIntoSafeArea(
+  box: ElementBox,
+  area: { widthMm: number; heightMm: number },
+  safeMarginMm: number,
+): AreaFit {
+  const half = halfExtents(box);
+  const availableWidth = area.widthMm - safeMarginMm * 2;
+  const availableHeight = area.heightMm - safeMarginMm * 2;
+  const ratio = Math.min(
+    1,
+    half.x > 0 ? availableWidth / (half.x * 2) : 1,
+    half.y > 0 ? availableHeight / (half.y * 2) : 1,
+  );
+  const x = half.x * ratio;
+  const y = half.y * ratio;
+  return {
+    ratio,
+    center: {
+      x: Math.min(area.widthMm - safeMarginMm - x, Math.max(safeMarginMm + x, box.x)),
+      y: Math.min(area.heightMm - safeMarginMm - y, Math.max(safeMarginMm + y, box.y)),
+    },
+  };
+}
+
 /** Trzyma środek w polu nadruku, dzięki czemu elementu nie da się zgubić poza obszarem. */
 export function clampToArea(point: Point, area: { widthMm: number; heightMm: number }): Point {
   return {

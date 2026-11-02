@@ -12,6 +12,7 @@ import {
   rotationFromPointer,
   rotationHandlePosition,
   scaleFromCorner,
+  type AreaStatus,
   type Corner,
   type ElementBox,
   type Point,
@@ -44,10 +45,12 @@ export function SelectionOverlay({
   store,
   area,
   fontsReady,
+  statuses,
 }: {
   store: StudioStore;
   area: PrintArea;
   fontsReady: boolean;
+  statuses: ReadonlyMap<string, AreaStatus> | null;
 }) {
   const surface = useRef<SVGSVGElement>(null);
   const [measure] = useState(createMeasureContext);
@@ -174,6 +177,9 @@ export function SelectionOverlay({
     setGuides({ x: false, y: false });
   };
 
+  const selectedStatus = selected ? statuses?.get(selected.id) : undefined;
+  // Kolor ramki mówi o problemie od razu, także podczas przeciągania.
+  const frameColor = selectedStatus === 'clipped' ? '#c8200f' : selectedStatus === 'outsideSafe' ? '#d97706' : '#0a84ff';
   const radius = HANDLE_RADIUS_PX * mmPerPx;
   const stroke = 1.5 * mmPerPx;
 
@@ -197,14 +203,14 @@ export function SelectionOverlay({
         <line x1={0} x2={area.widthMm} y1={area.heightMm / 2} y2={area.heightMm / 2} stroke="#0a84ff" strokeWidth={stroke} data-testid="guide-y" />
       )}
       {selected && selectedBox && (
-        <g data-testid="selection-box" data-element={selected.id}>
+        <g data-testid="selection-box" data-element={selected.id} data-status={selectedStatus ?? 'inside'}>
           <polygon
             points={CORNERS.map((corner) => {
               const position = cornerPosition(selectedBox, corner);
               return `${position.x},${position.y}`;
             }).join(' ')}
             fill="none"
-            stroke="#0a84ff"
+            stroke={frameColor}
             strokeWidth={stroke}
           />
           {!selected.locked && (

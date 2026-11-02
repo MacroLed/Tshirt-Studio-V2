@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { AreaStatus } from '@/core/design/geometry';
 import type { PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import type { PrintTextureManager } from '@/three/PrintTextureManager';
@@ -19,6 +20,7 @@ export function FlatCanvas({
   fabricColor,
   store,
   fontsReady,
+  statuses,
 }: {
   manifest: GarmentManifest;
   textures: PrintTextureManager;
@@ -26,6 +28,7 @@ export function FlatCanvas({
   fabricColor: string;
   store: StudioStore;
   fontsReady: boolean;
+  statuses: ReadonlyMap<string, AreaStatus> | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const placement = manifest.placements[active];
@@ -76,7 +79,7 @@ export function FlatCanvas({
             opacity={0.75}
           />
         </svg>
-        <SelectionOverlay key={active} store={store} area={placement.printArea} fontsReady={fontsReady} />
+        <SelectionOverlay key={active} store={store} area={placement.printArea} fontsReady={fontsReady} statuses={statuses} />
       </div>
     </section>
   );

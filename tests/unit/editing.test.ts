@@ -11,9 +11,11 @@ import {
   updateElement,
 } from '@/core/design/commands';
 import {
+  areaStatus,
   clampToArea,
   containsPoint,
   cornerPosition,
+  fitIntoSafeArea,
   rotationFromPointer,
   rotationHandlePosition,
   scaleFromCorner,
@@ -246,5 +248,51 @@ describe('obrys tekstu i fonty', () => {
       expect(same(render(accented), render(plain)), `${fontId}: ${accented}`).toBe(false);
     }
     expect(FONT_CATALOG[fontId]!.weights.length).toBeGreaterThan(0);
+  });
+});
+
+describe('pole nadruku', () => {
+  const area = { widthMm: 350, heightMm: 450 };
+  const margin = 10;
+  const box = (overrides: Partial<ElementBox> = {}): ElementBox => ({ x: 175, y: 225, width: 100, height: 40, rotationDeg: 0, ...overrides });
+
+  it('rozpoznaje trzy stany przy każdej krawędzi', () => {
+    expect(areaStatus(box(), area, margin)).toBe('inside');
+    expect(areaStatus(box({ x: 60.001 }), area, margin)).toBe('inside');
+    expect(areaStatus(box({ x: 55 }), area, margin)).toBe('outsideSafe');
+    expect(areaStatus(box({ x: 40 }), area, margin)).toBe('clipped');
+    expect(areaStatus(box({ x: 300 }), area, margin)).toBe('outsideSafe');
+    expect(areaStatus(box({ x: 310 }), area, margin)).toBe('clipped');
+    expect(areaStatus(box({ y: 25 }), area, margin)).toBe('outsideSafe');
+    expect(areaStatus(box({ y: 435 }), area, margin)).toBe('clipped');
+  });
+
+  it('obrót się liczy: obrócony element może zmieścić się w pionie', () => {
+    const wide = box({ width: 400, height: 20 });
+    expect(areaStatus(wide, area, margin)).toBe('clipped');
+    expect(areaStatus({ ...wide, rotationDeg: 90 }, area, margin)).toBe('inside');
+  });
+
+  it('dopasowanie nie rusza elementu, który się mieści', () => {
+    const fit = fitIntoSafeArea(box(), area, margin);
+    expect(fit.ratio).toBe(1);
+    expect(fit.center).toEqual({ x: 175, y: 225 });
+  });
+
+  it('dopasowanie przesuwa, a pomniejsza tylko gdy musi', () => {
+    const moved = fitIntoSafeArea(box({ x: 340 }), area, margin);
+    expect(moved.ratio).toBe(1);
+    expect(moved.center.x).toBe(290);
+    const huge = box({ width: 700 });
+    const fit = fitIntoSafeArea(huge, area, margin);
+    expect(fit.ratio).toBeCloseTo(330 / 700);
+    expect(areaStatus({ ...huge, width: 700 * fit.ratio, height: 40 * fit.ratio, x: fit.center.x, y: fit.center.y }, area, margin)).toBe('inside');
+  });
+
+  it.each([0, 15, 45, 90, 137, -60])('po dopasowaniu element jest w polu przy obrocie %i°', (rotationDeg) => {
+    const start = box({ width: 900, height: 120, x: 30, y: 400, rotationDeg });
+    const fit = fitIntoSafeArea(start, area, margin);
+    const after = { ...start, width: start.width * fit.ratio, height: start.height * fit.ratio, x: fit.center.x, y: fit.center.y };
+    expect(areaStatus(after, area, margin)).toBe('inside');
   });
 });

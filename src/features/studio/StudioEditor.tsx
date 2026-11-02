@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import type { Product } from '@/core/catalog/schema';
 import { createWorkingCopy } from '@/core/design/commands';
@@ -11,7 +11,9 @@ import type { GarmentManifest } from '@/core/garment/manifest';
 import { loadPrintFonts } from '@/three/printFonts';
 import { PrintTextureManager } from '@/three/PrintTextureManager';
 import { WebGLGuard } from '@/three/WebGLGuard';
+import { AreaWarning } from './AreaWarning';
 import { ColorPicker } from './ColorPicker';
+import { computeStatuses, STATUS_MESSAGES } from './elementStatus';
 import { FlatCanvas } from './FlatCanvas';
 import { PLACEMENT_LABELS } from './placementLabels';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -93,12 +95,18 @@ export default function StudioEditor({
   const [focusRequest, setFocusRequest] = useState<string | null>(null);
   const drawnPlacements = useRef<DesignDocument['placements'] | null>(null);
   const viewportHost = useRef<HTMLDivElement>(null);
+  const [measure] = useState(() => window.document.createElement('canvas').getContext('2d'));
 
   const document: DesignDocument = useStore(store, (state) => state.history.present);
   const canUndo = useStore(store, (state) => state.history.past.length > 0);
   const canRedo = useStore(store, (state) => state.history.future.length > 0);
   const dirty = useStore(store, isDirty);
   const active = document.editor.activePlacement;
+  const placementElements = document.placements;
+  const statuses = useMemo(
+    () => (measure && fontsReady ? computeStatuses(measure, placementElements, manifest) : null),
+    [measure, fontsReady, placementElements, manifest],
+  );
 
   const setColor = useCallback((hex: string) => store.getState().setFabricColor(hex), [store]);
 
@@ -318,6 +326,11 @@ export default function StudioEditor({
                 >
                   {PLACEMENT_LABELS[placement]}
                   {count > 0 && <span className="ml-1.5 text-xs opacity-70">{count}</span>}
+                  {statuses?.[placement].worst === 'clipped' && (
+                    <span title={STATUS_MESSAGES.clipped} data-testid={`placement-warning-${placement}`} className="ml-1.5">
+                      ⚠<span className="sr-only"> {STATUS_MESSAGES.clipped}</span>
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -356,10 +369,17 @@ export default function StudioEditor({
                   fabricColor={document.fabricColor}
                   store={store}
                   fontsReady={fontsReady}
+                  statuses={statuses?.[active].byElement ?? null}
                 />
               </PanelSection>
+              <AreaWarning
+                store={store}
+                statuses={statuses?.[active].byElement ?? null}
+                placementManifest={manifest.placements[active] ?? null}
+                measure={measure}
+              />
             </div>
-            <PropertiesPanel store={store} focusRequest={focusRequest} />
+            <PropertiesPanel store={store} focusRequest={focusRequest} statuses={statuses?.[active].byElement ?? null} />
           </aside>
         )}
 

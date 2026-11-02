@@ -445,3 +445,73 @@ test.describe('edytor: tekst', () => {
     await expect(page.getByTestId('studio')).toHaveAttribute('data-active-placement', 'back');
   });
 });
+
+test.describe('edytor: pole nadruku', () => {
+  test.setTimeout(120_000);
+
+  test('ostrzeżenia o krawędzi i dopasowanie jednym kliknięciem', async ({ page }, testInfo) => {
+    desktopOnly(testInfo.project.name);
+    await open(page, '/studio/blanc');
+    await page.getByTestId('add-text').click();
+    await page.getByTestId('text-content').blur();
+    const box = page.getByTestId('selection-box');
+    await expect(box).toHaveAttribute('data-status', 'inside');
+    await expect(page.getByTestId('area-warning')).toHaveCount(0);
+    await expect(page.getByTestId('placement-warning-front')).toHaveCount(0);
+
+    // Za blisko krawędzi: ostrzeżenie, ale jeszcze nie ucięcie.
+    const size = page.getByTestId('text-size');
+    await size.fill('20');
+    await size.blur();
+    const halfWidth = await page.evaluate(() => {
+      const polygon = document.querySelector('[data-testid="selection-box"] polygon')!;
+      const xs = polygon.getAttribute('points')!.split(' ').map((pair) => Number(pair.split(',')[0]));
+      return (Math.max(...xs) - Math.min(...xs)) / 2;
+    });
+    const x = page.getByTestId('element-x');
+    await x.fill(String(Math.round(halfWidth + 4)));
+    await x.blur();
+    await expect(page.getByTestId('area-warning')).toHaveAttribute('data-status', 'outsideSafe');
+    await expect(page.getByTestId('placement-warning-front')).toHaveCount(0);
+
+    // Poza polem: ostrzeżenie w panelu, na liście, na zakładce i w kolorze ramki.
+    await x.fill('5');
+    await x.blur();
+    await expect(box).toHaveAttribute('data-status', 'clipped');
+    await expect(page.getByTestId('area-warning')).toHaveAttribute('data-status', 'clipped');
+    await expect(page.getByTestId('area-warning')).toContainText('ucięty');
+    // Problem powstaje podczas edycji pól niżej, więc ostrzeżenie musi być wtedy na ekranie.
+    await x.focus();
+    await expect(page.getByTestId('area-warning')).toBeInViewport({ ratio: 1 });
+    await expect(x).toBeInViewport();
+    await expect(page.getByTestId('element-warning')).toBeVisible();
+    await expect(page.getByTestId('placement-warning-front')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('warning.png'), timeout: 60_000 });
+
+    // Zakładka ostrzega także podczas pracy na innym obszarze.
+    await page.getByTestId('placement-back').click();
+    await expect(page.getByTestId('placement-warning-front')).toBeVisible();
+    await page.getByTestId('placement-front').click();
+    await page.getByTestId('elements-list').getByRole('button').first().click();
+
+    await page.getByTestId('fit-to-area').click();
+    await expect(page.getByTestId('selection-box')).toHaveAttribute('data-status', 'inside');
+    await expect(page.getByTestId('area-warning')).toHaveCount(0);
+    await expect(page.getByTestId('placement-warning-front')).toHaveCount(0);
+
+    // Dopasowanie to jeden krok cofania.
+    await page.getByTestId('undo').click();
+    await expect(page.getByTestId('selection-box')).toHaveAttribute('data-status', 'clipped');
+  });
+
+  test('przeciągnięcie poza krawędź ostrzega od razu', async ({ page }, testInfo) => {
+    desktopOnly(testInfo.project.name);
+    await open(page, '/studio/blanc');
+    await page.getByTestId('add-text').click();
+    await page.getByTestId('text-content').blur();
+    await dragFromTo(page, await canvasPoint(page, 0.5, 0.5), await canvasPoint(page, 0.95, 0.5));
+    await expect(page.getByTestId('selection-box')).toHaveAttribute('data-status', 'clipped');
+    await page.getByTestId('fit-to-area').click();
+    await expect(page.getByTestId('selection-box')).toHaveAttribute('data-status', 'inside');
+  });
+});
