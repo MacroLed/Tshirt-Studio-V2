@@ -1,15 +1,7 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef } from 'react';
-import {
-  CanvasTexture,
-  CatmullRomCurve3,
-  InstancedMesh,
-  Matrix4,
-  Quaternion,
-  TubeGeometry,
-  Vector3,
-} from 'three';
+import { useLayoutEffect, useMemo, type Ref } from 'react';
+import { CanvasTexture, CatmullRomCurve3, type InstancedMesh, TubeGeometry, Vector3 } from 'three';
 import { RAIL_Y, type RackLayout } from './rackLayout';
 
 /** Ten sam kształt co przeszkoda w symulacji tkaniny (build_tee.py), w centymetrach. */
@@ -34,49 +26,18 @@ const HANGER_HOOK: [number, number][] = [
 ];
 
 const CM = 0.01;
-const COUNT_MATERIAL_METAL = { color: '#2b2926', metalness: 0.9, roughness: 0.38 };
+const FRAME_METAL = { color: '#2b2926', metalness: 0.9, roughness: 0.38 };
 
-function InstancedHangerPart({
-  layout,
+/** Wieszaki jako instancje: pozycje ustawia pętla animacji, razem z koszulkami. */
+export function HangerInstances({
   count,
-  geometry,
-  color,
-  metalness,
-  roughness,
+  armRef,
+  hookRef,
 }: {
-  layout: RackLayout;
   count: number;
-  geometry: TubeGeometry;
-  color: string;
-  metalness: number;
-  roughness: number;
+  armRef: Ref<InstancedMesh>;
+  hookRef: Ref<InstancedMesh>;
 }) {
-  const mesh = useRef<InstancedMesh>(null);
-  useLayoutEffect(() => {
-    if (!mesh.current) return;
-    const matrix = new Matrix4();
-    const rotation = new Quaternion();
-    const up = new Vector3(0, 1, 0);
-    const scale = new Vector3(1, 1, 1);
-    for (let index = 0; index < count; index += 1) {
-      const { position, rotationY } = layout.placement(index);
-      rotation.setFromAxisAngle(up, rotationY);
-      matrix.compose(new Vector3(...position), rotation, scale);
-      mesh.current.setMatrixAt(index, matrix);
-    }
-    mesh.current.instanceMatrix.needsUpdate = true;
-    mesh.current.computeBoundingSphere();
-  }, [layout, count]);
-
-  return (
-    <instancedMesh ref={mesh} args={[geometry, undefined, count]} frustumCulled={false}>
-      <meshStandardMaterial color={color} metalness={metalness} roughness={roughness} />
-    </instancedMesh>
-  );
-}
-
-/** Stojak i wieszaki generowane w kodzie: promień wynika z liczby produktów w katalogu. */
-export function RackStructure({ layout, count }: { layout: RackLayout; count: number }) {
   const armGeometry = useMemo(() => {
     const curve = new CatmullRomCurve3(HANGER_ARM.map(([x, y]) => new Vector3(x * CM, y * CM, 0)));
     return new TubeGeometry(curve, 48, 0.0085, 10);
@@ -93,43 +54,40 @@ export function RackStructure({ layout, count }: { layout: RackLayout; count: nu
     [armGeometry, hookGeometry],
   );
 
+  return (
+    <>
+      <instancedMesh ref={armRef} args={[armGeometry, undefined, count]} frustumCulled={false}>
+        <meshStandardMaterial color="#9c7147" metalness={0} roughness={0.45} />
+      </instancedMesh>
+      <instancedMesh ref={hookRef} args={[hookGeometry, undefined, count]} frustumCulled={false}>
+        <meshStandardMaterial color="#c7c4bd" metalness={1} roughness={0.3} />
+      </instancedMesh>
+    </>
+  );
+}
+
+/** Stojak generowany w kodzie: promień wynika z liczby produktów w katalogu. */
+export function RackFrame({ layout }: { layout: RackLayout }) {
   const spokes = [0, Math.PI / 2];
   return (
     <group>
-      <InstancedHangerPart
-        layout={layout}
-        count={count}
-        geometry={armGeometry}
-        color="#9c7147"
-        metalness={0}
-        roughness={0.45}
-      />
-      <InstancedHangerPart
-        layout={layout}
-        count={count}
-        geometry={hookGeometry}
-        color="#c7c4bd"
-        metalness={1}
-        roughness={0.3}
-      />
-
       <mesh position={[0, RAIL_Y, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[layout.radius, 0.009, 12, 128]} />
-        <meshStandardMaterial {...COUNT_MATERIAL_METAL} />
+        <meshStandardMaterial {...FRAME_METAL} />
       </mesh>
       {spokes.map((rotation) => (
         <mesh key={rotation} position={[0, RAIL_Y, 0]} rotation={[0, rotation, Math.PI / 2]}>
           <cylinderGeometry args={[0.007, 0.007, layout.radius * 2, 12]} />
-          <meshStandardMaterial {...COUNT_MATERIAL_METAL} />
+          <meshStandardMaterial {...FRAME_METAL} />
         </mesh>
       ))}
       <mesh position={[0, RAIL_Y / 2, 0]}>
         <cylinderGeometry args={[0.016, 0.016, RAIL_Y, 16]} />
-        <meshStandardMaterial {...COUNT_MATERIAL_METAL} />
+        <meshStandardMaterial {...FRAME_METAL} />
       </mesh>
       <mesh position={[0, 0.012, 0]}>
         <cylinderGeometry args={[0.28, 0.3, 0.024, 48]} />
-        <meshStandardMaterial {...COUNT_MATERIAL_METAL} />
+        <meshStandardMaterial {...FRAME_METAL} />
       </mesh>
     </group>
   );

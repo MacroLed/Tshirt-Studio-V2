@@ -39,6 +39,12 @@ body {
   outline-offset: 3px;
 }
 
+@keyframes studio-enter {
+  from {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

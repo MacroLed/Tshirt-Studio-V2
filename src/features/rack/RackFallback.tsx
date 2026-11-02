@@ -17,7 +17,7 @@ export function RackFallback({ products }: { products: Product[] }) {
           </div>
           <p className="mt-4 text-eyebrow uppercase tracking-eyebrow text-muted">{product.category}</p>
           <h2 className="mt-1 font-display text-3xl leading-tight">
-            <Link href={`/preview/${product.slug}`} className="underline-offset-4 hover:underline">
+            <Link href={`/studio/${product.slug}`} className="underline-offset-4 hover:underline">
               {product.name}
             </Link>
           </h2>

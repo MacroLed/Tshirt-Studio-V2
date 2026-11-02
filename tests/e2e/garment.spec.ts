@@ -99,14 +99,14 @@ test.describe('strona podglądu', () => {
     });
     page.on('pageerror', (error) => errors.push(error.message));
 
-    await page.goto('/preview/nocturne');
+    await page.goto('/studio/nocturne');
     await expect(page.getByRole('heading', { name: 'Nocturne' })).toBeVisible();
     const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(4000);
     await page.screenshot({ path: testInfo.outputPath('preview.png'), timeout: 30_000 });
 
-    await page.goto('/preview/atelier');
+    await page.goto('/studio/atelier');
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(4000);
     await page.screenshot({ path: testInfo.outputPath('white.png'), timeout: 30_000 });
@@ -130,7 +130,7 @@ test.describe('strona podglądu', () => {
   test('kolor koszulki na ekranie jest bliski wzorcowi', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Te same obliczenia, wystarczy jedno uruchomienie');
     test.setTimeout(120_000);
-    await page.goto('/preview/blanc');
+    await page.goto('/studio/blanc');
     const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(4000);
@@ -172,7 +172,7 @@ test.describe('strona podglądu', () => {
   });
 
   test('nieznany produkt daje stronę 404', async ({ page }) => {
-    const response = await page.goto('/preview/nie-ma-takiego');
+    const response = await page.goto('/studio/nie-ma-takiego');
     expect(response?.status()).toBe(404);
   });
 
@@ -180,7 +180,7 @@ test.describe('strona podglądu', () => {
     await disableWebGL(page);
     await page.goto('/');
     await page.getByRole('region', { name: 'Lista produktów' }).getByRole('link', { name: 'Atelier' }).click();
-    await expect(page).toHaveURL(/\/preview\/atelier$/);
+    await expect(page).toHaveURL(/\/studio\/atelier$/);
     await expect(page.getByRole('heading', { name: 'Atelier' })).toBeVisible();
   });
 });

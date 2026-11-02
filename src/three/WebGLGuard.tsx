@@ -2,13 +2,23 @@
 
 import { Component, useSyncExternalStore, type ReactNode } from 'react';
 
+let webGLSupport: boolean | null = null;
+
+/**
+ * Sprawdza obsługę WebGL tylko raz na sesję i od razu zwalnia kontekst testowy.
+ * Przeglądarka pozwala na około 16 kontekstów i po przekroczeniu zabija najstarszy, czyli scenę,
+ * więc ta funkcja, wywoływana przy każdym renderze, nie może tworzyć nowego za każdym razem.
+ */
 function detectWebGL(): boolean {
+  if (webGLSupport !== null) return webGLSupport;
   try {
-    const canvas = document.createElement('canvas');
-    return canvas.getContext('webgl2') !== null;
+    const context = document.createElement('canvas').getContext('webgl2');
+    webGLSupport = context !== null;
+    context?.getExtension('WEBGL_lose_context')?.loseContext();
   } catch {
-    return false;
+    webGLSupport = false;
   }
+  return webGLSupport;
 }
 
 const noopSubscribe = () => () => undefined;

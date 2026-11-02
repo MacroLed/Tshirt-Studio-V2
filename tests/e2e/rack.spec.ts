@@ -128,6 +128,203 @@ test.describe('wieszak 3D na stronie głównej', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 15_000 }).toBeGreaterThan(0);
   });
 
+  test('obracanie i ruch kursora nie niszczą sceny ani kontekstu GPU', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Ta sama logika, wystarczy jedno uruchomienie');
+    // Regresja: sprawdzanie WebGL tworzyło nowy kontekst przy każdym renderze, aż przeglądarka zabijała scenę.
+    await page.addInitScript(() => {
+      const stats = { created: 0, lost: 0 };
+      (window as unknown as { __webglStats: typeof stats }).__webglStats = stats;
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+        const known = (this as unknown as { __known?: boolean }).__known;
+        const context = (original as (...args: unknown[]) => unknown).call(this, type, ...rest);
+        if (type.startsWith('webgl') && context && !known) {
+          (this as unknown as { __known: boolean }).__known = true;
+          stats.created += 1;
+          // Kontekst testowy z WebGLGuard jest zwalniany celowo; liczy się tylko płótno na stronie.
+          this.addEventListener('webglcontextlost', () => {
+            if (this.isConnected) stats.lost += 1;
+          });
+        }
+        return context;
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    const warnings: string[] = [];
+    page.on('console', (message) => {
+      if (message.text().includes('WebGL context')) warnings.push(message.text());
+    });
+
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 45_000 });
+    await page.waitForTimeout(4000);
+    const stats = () => page.evaluate(() => (window as unknown as { __webglStats: { created: number; lost: number } }).__webglStats);
+    const before = await stats();
+
+    const box = (await stage.boundingBox())!;
+    for (let round = 0; round < 3; round += 1) {
+      await page.mouse.move(box.width * 0.6, box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.width * 0.35, box.height / 2, { steps: 12 });
+      await page.mouse.up();
+      await page.mouse.move(box.width * 0.2, box.height * 0.3, { steps: 8 });
+      await page.mouse.move(box.width * 0.7, box.height * 0.6, { steps: 8 });
+    }
+    for (let i = 0; i < 20; i += 1) await page.getByRole('button', { name: 'Następna koszulka' }).click();
+    await page.waitForTimeout(2000);
+
+    const after = await stats();
+    expect(warnings, warnings.join('\n')).toEqual([]);
+    expect(after.lost).toBe(0);
+    expect(after.created).toBe(before.created);
+    // Scena istnieje: jeden kontekst sceny i co najwyżej jeden testowy, zwolniony od razu.
+    expect(after.created).toBeLessThanOrEqual(2);
+  });
+
+  test('najechanie: koszulka reaguje, a etykieta pokazuje nazwę', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Telefon nie ma najechania, sprawdza to test dotyku');
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 45_000 });
+    await page.waitForTimeout(5000);
+    const box = (await stage.boundingBox())!;
+    const clip = { x: box.width * 0.2, y: box.height * 0.15, width: box.width * 0.6, height: box.height * 0.65 };
+    const before = await page.screenshot({ clip, timeout: 60_000 });
+
+    await page.mouse.move(box.width / 2, box.height * 0.5);
+    await expect(stage).toHaveAttribute('data-hovered', 'atelier');
+    await expect(page.getByTestId('rack-tooltip')).toContainText('Atelier');
+    await expect(page.getByTestId('rack-tooltip')).toHaveCSS('opacity', '1');
+    await page.waitForTimeout(4000);
+    const after = await page.screenshot({ path: testInfo.outputPath('hover.png'), timeout: 60_000 });
+    const afterClip = await page.screenshot({ clip, timeout: 60_000 });
+    expect(after.length).toBeGreaterThan(0);
+    expect(Buffer.compare(before, afterClip), 'obraz nie zmienił się po najechaniu').not.toBe(0);
+
+    // Puste miejsce obok stojaka: koszulka wraca na obręcz.
+    await page.mouse.move(8, box.height * 0.5);
+    await expect(stage).toHaveAttribute('data-hovered', '');
+    await expect(page.getByTestId('rack-tooltip')).toHaveCSS('opacity', '0');
+  });
+
+  test('kliknięcie zdejmuje koszulkę, a tożsamość przechodzi do edytora', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Wersję dotykową sprawdza osobny test');
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 45_000 });
+    await page.waitForTimeout(5000);
+    const box = (await stage.boundingBox())!;
+
+    await page.mouse.click(box.width / 2, box.height * 0.5);
+    await expect(stage).toHaveAttribute('data-selected', 'atelier');
+    const panel = page.getByTestId('product-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('heading', { name: 'Atelier' })).toBeVisible();
+    await expect(panel).toContainText('149,00');
+    await page.waitForTimeout(4000);
+    await page.screenshot({ path: testInfo.outputPath('selected.png'), timeout: 60_000 });
+
+    await panel.getByTestId('color-sand').click();
+    await expect(panel.getByTestId('color-sand')).toHaveAttribute('aria-pressed', 'true');
+    await page.waitForTimeout(1000);
+    await page.screenshot({ path: testInfo.outputPath('selected-sand.png'), timeout: 60_000 });
+
+    await panel.getByTestId('personalize').click();
+    await expect(page).toHaveURL(/\/studio\/atelier\?color=sand$/, { timeout: 30_000 });
+    const studio = page.getByTestId('studio');
+    await expect(studio).toHaveAttribute('data-product', 'prod_atelier');
+    await expect(studio).toHaveAttribute('data-garment', 'regular-v1');
+    await expect(studio).toHaveAttribute('data-fabric-color', '#c9b999');
+    await expect(studio).toHaveAttribute('data-design-elements', 't1');
+    await expect(page.getByRole('heading', { name: 'Atelier' })).toBeVisible();
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
+  test('sąsiednią koszulkę też można wybrać, a stojak obraca ją na przód', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Wersję dotykową sprawdza osobny test');
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 45_000 });
+    await page.waitForTimeout(5000);
+    const box = (await stage.boundingBox())!;
+    // Nocturne wisi na prawo od koszulki na pierwszym planie.
+    await page.mouse.click(box.width * 0.73, box.height * 0.55);
+    await expect(stage).toHaveAttribute('data-selected', 'nocturne');
+    await expect(stage).toHaveAttribute('data-focused', 'nocturne', { timeout: 30_000 });
+  });
+
+  test('zamykanie: Escape, przycisk i kliknięcie obok', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Wersję dotykową sprawdza osobny test');
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    const panel = page.getByTestId('product-panel');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 45_000 });
+    await page.waitForTimeout(5000);
+
+    // Klawiatura: Enter otwiera koszulkę z pierwszego planu, a fokus trafia do panelu.
+    await stage.focus();
+    await page.keyboard.press('Enter');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Zamknij' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+
+    await page.getByTestId('focused-name').click();
+    await expect(panel).toBeVisible();
+    await panel.getByRole('button', { name: 'Zamknij' }).click();
+    await expect(panel).toHaveCount(0);
+
+    await page.getByTestId('focused-name').click();
+    await expect(panel).toBeVisible();
+    await page.mouse.click(8, 300);
+    await expect(panel).toHaveCount(0);
+  });
+
+  test('przeciąganie nie otwiera panelu', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Wersję dotykową sprawdza osobny test');
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 45_000 });
+    await page.waitForTimeout(5000);
+    const box = (await stage.boundingBox())!;
+    await page.mouse.move(box.width / 2, box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.width / 2 - 120, box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(1000);
+    await expect(stage).toHaveAttribute('data-selected', '');
+  });
+
+  test('telefon: pierwsze dotknięcie animuje, drugie otwiera panel', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Dotyczy tylko urządzeń dotykowych');
+    await page.goto('/');
+    const stage = page.getByTestId('rack-stage');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 45_000 });
+    await page.waitForTimeout(8000);
+    const box = (await stage.boundingBox())!;
+    const x = box.width / 2;
+    const y = box.height * 0.5;
+
+    await page.touchscreen.tap(x, y);
+    await expect(stage).toHaveAttribute('data-hovered', 'atelier', { timeout: 20_000 });
+    await expect(stage).toHaveAttribute('data-selected', '');
+    await page.waitForTimeout(3000);
+    await page.touchscreen.tap(x, y);
+    await expect(stage).toHaveAttribute('data-selected', 'atelier', { timeout: 20_000 });
+    await expect(page.getByTestId('product-panel')).toBeVisible();
+    await page.waitForTimeout(6000);
+    await page.screenshot({ path: testInfo.outputPath('selected-mobile.png'), timeout: 60_000 });
+  });
+
+  test('nieznany kolor w adresie jest ignorowany', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Ta sama logika serwera');
+    await disableWebGL(page);
+    await page.goto('/studio/atelier?color=zielony');
+    await expect(page.getByTestId('studio')).toHaveAttribute('data-fabric-color', '#edeae3');
+  });
+
   test('bez WebGL strona pozostaje użyteczna', async ({ page }, testInfo) => {
     await disableWebGL(page);
     await page.goto('/');

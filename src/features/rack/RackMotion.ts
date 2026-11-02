@@ -51,7 +51,12 @@ export class RackMotion {
 
   goToOffset(offset: number): void {
     const from = this.target ?? this.angle;
-    const goal = shortestAngleTo(from, this.layout.angleForIndex(this.layout.nearestIndex(from) + offset));
+    this.goToIndex(this.layout.nearestIndex(from) + offset);
+  }
+
+  goToIndex(index: number): void {
+    const from = this.target ?? this.angle;
+    const goal = shortestAngleTo(from, this.layout.angleForIndex(index));
     if (this.reducedMotion()) {
       this.angle = goal;
       this.target = null;

@@ -9,6 +9,19 @@ export interface FabricMaterialOptions {
   knitMap?: Texture | null;
   /** Wypalone zacienienie fałd, w UV0. */
   aoMap?: Texture | null;
+  /** Fala na tkaninie podczas ruchu koszulki; wspólny obiekt, zmieniany z pętli animacji. */
+  wave?: FabricWave;
+}
+
+export interface FabricWave {
+  amplitude: { value: number };
+  time: { value: number };
+  /** Wysokość punktu zawieszenia w układzie świata: im niżej, tym tkanina rusza się mocniej. */
+  originY: { value: number };
+}
+
+export function createFabricWave(originY = 0): FabricWave {
+  return { amplitude: { value: 0 }, time: { value: 0 }, originY: { value: originY } };
 }
 
 const DETAIL_BUMP_SCALE = 0.8;
@@ -42,11 +55,34 @@ export function createFabricMaterial(options: FabricMaterialOptions): MeshPhysic
     aoMapIntensity: 1,
   });
 
+  const wave = options.wave ?? createFabricWave();
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uPrintMap = { value: options.printMap };
+    shader.uniforms.uWaveAmplitude = wave.amplitude;
+    shader.uniforms.uWaveTime = wave.time;
+    shader.uniforms.uWaveOriginY = wave.originY;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec2 uv1;\nvarying vec2 vPrintUv;')
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvPrintUv = uv1;');
+      .replace(
+        '#include <common>',
+        `#include <common>
+        attribute vec2 uv1;
+        varying vec2 vPrintUv;
+        uniform float uWaveAmplitude;
+        uniform float uWaveTime;
+        uniform float uWaveOriginY;`,
+      )
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvPrintUv = uv1;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        // Fala idzie w dół tkaniny; przy haku jej nie ma, a przy dole jest największa.
+        // Model jest skwantyzowany, więc wysokość liczymy w świecie, a przesunięcie skalujemy z powrotem.
+        if (uWaveAmplitude > 0.0) {
+          float hang = clamp((uWaveOriginY - (modelMatrix * vec4(position, 1.0)).y) / 0.72, 0.0, 1.0);
+          float ripple = sin(hang * 9.0 - uWaveTime * 11.0 + position.x * 3.0);
+          transformed.z += uWaveAmplitude * hang * hang * ripple / length(modelMatrix[2].xyz);
+        }`,
+      );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',

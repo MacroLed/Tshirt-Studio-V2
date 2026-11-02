@@ -6,26 +6,46 @@ import type { Product } from '@/core/catalog/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { WebGLGuard } from '@/three/WebGLGuard';
 
-const GarmentPreviewScene = dynamic(() => import('./GarmentPreviewScene'), {
+const StudioStartScene = dynamic(() => import('./StudioStartScene'), {
   ssr: false,
   loading: () => <p className="p-8 text-sm text-muted">Ładowanie modelu 3D…</p>,
 });
 
-/** TYMCZASOWY widok jednej koszulki (ETAP 1, krok 4); w kroku 6 zastąpi go wybór z wieszaka. */
-export function GarmentPreview({ product, manifest }: { product: Product; manifest: GarmentManifest }) {
-  const [fabricColor, setFabricColor] = useState(product.originalDesign.fabricColor);
+/**
+ * Punkt wejścia do edytora: koszulka wybrana z wieszaka, ze swoim wzorem, kolorem i krojem.
+ * Narzędzia projektowe i układ edytora powstają w ETAPIE 2 i 3.
+ */
+export function StudioStart({
+  product,
+  manifest,
+  initialColor,
+}: {
+  product: Product;
+  manifest: GarmentManifest;
+  initialColor: string;
+}) {
+  const [fabricColor, setFabricColor] = useState(initialColor);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      data-testid="studio"
+      data-product={product.id}
+      data-garment={manifest.garmentVersionId}
+      data-fabric-color={fabricColor.toLowerCase()}
+      data-design-elements={Object.values(product.originalDesign.placements)
+        .flatMap((placement) => placement.elements.map((element) => element.id))
+        .join(',')}
+    >
       <div className="relative min-h-0 flex-1">
         <WebGLGuard
           fallback={
-            <p className="p-8 text-sm text-muted" role="alert">
-              Nie udało się uruchomić podglądu 3D na tym urządzeniu. Listę produktów nadal możesz przeglądać.
+            <p className="p-8 text-sm text-muted" role="status">
+              Edytor 3D wymaga przeglądarki z obsługą WebGL, a to urządzenie jej nie udostępnia.
             </p>
           }
         >
-          <GarmentPreviewScene manifest={manifest} design={product.originalDesign} fabricColor={fabricColor} />
+          <StudioStartScene manifest={manifest} design={product.originalDesign} fabricColor={fabricColor} />
         </WebGLGuard>
       </div>
       <fieldset className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3 sm:px-8">

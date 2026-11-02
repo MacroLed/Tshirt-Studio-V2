@@ -6,7 +6,7 @@ import { useEffect, useMemo } from 'react';
 import { ClampToEdgeWrapping, Mesh, NoColorSpace, type MeshPhysicalMaterial, type Object3D, type Material, type Texture } from 'three';
 import { PLACEMENT_IDS, type DesignDocument, type PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
-import { createFabricMaterial } from './fabricMaterial';
+import { createFabricMaterial, type FabricWave } from './fabricMaterial';
 import { getKnitNormalTexture } from './knitTexture';
 import { PrintTextureManager } from './PrintTextureManager';
 
@@ -17,6 +17,7 @@ interface GarmentMeshProps {
   maxTexturePx?: number;
   /** Wzór się nie zmieni, więc płótna powstają tylko dla obszarów z nadrukiem. */
   onlyUsedPlacements?: boolean;
+  wave?: FabricWave;
 }
 
 function placementForMaterial(manifest: GarmentManifest, name: string): PlacementId | null {
@@ -24,7 +25,7 @@ function placementForMaterial(manifest: GarmentManifest, name: string): Placemen
 }
 
 /** Koszulka 3D: geometria z GLB, materiał i nadruk tworzone w kodzie na podstawie dokumentu. */
-export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx, onlyUsedPlacements }: GarmentMeshProps) {
+export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx, onlyUsedPlacements, wave }: GarmentMeshProps) {
   // Dekoder Draco nie jest potrzebny; Meshopt jest wbudowany w pakiet, bez pobierania z CDN.
   const { scene } = useGLTF(manifest.files.hanging, false, true);
   const [detailMap, aoMap] = useTexture([manifest.files.detailMap, manifest.files.aoMap], (loaded) => {
@@ -65,6 +66,7 @@ export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx, onlyU
         detailMap,
         knitMap,
         aoMap,
+        wave,
       });
       material.name = source.name;
       child.material = material;
@@ -75,7 +77,7 @@ export function GarmentMesh({ manifest, design, fabricColor, maxTexturePx, onlyU
     return { root: clone, materials: created };
     // Kolor aktualizuje osobny efekt: jego zmiana nie może przebudowywać materiałów.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, manifest, textures, detailMap, aoMap, knitMap]);
+  }, [scene, manifest, textures, detailMap, aoMap, knitMap, wave]);
 
   useEffect(() => {
     const report = textures.update(design);

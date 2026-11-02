@@ -28,8 +28,8 @@ export default async function HomePage() {
           <h2 className="font-display text-3xl">Wszystkie koszulki</h2>
           <div className="mt-4 max-w-xl">
             <PrototypeNotice>
-              Produkty i ceny są przykładowe, a zakup nie jest jeszcze możliwy. Kliknij nazwę produktu, aby zobaczyć
-              koszulkę 3D z bliska.
+              Produkty i ceny są przykładowe, a zakup nie jest jeszcze możliwy. Kliknij nazwę produktu, aby przejść do
+              personalizacji.
             </PrototypeNotice>
           </div>
         </div>

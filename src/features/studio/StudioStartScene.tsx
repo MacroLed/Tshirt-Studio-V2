@@ -13,13 +13,13 @@ import { StudioLights } from '@/three/StudioLights';
 /** Środek koszulki wiszącej od 0 do -72 cm w układzie modelu. */
 const TARGET: [number, number, number] = [0, -0.34, 0];
 
-interface GarmentPreviewSceneProps {
+interface StudioStartSceneProps {
   manifest: GarmentManifest;
   design: DesignDocument;
   fabricColor: string;
 }
 
-export default function GarmentPreviewScene({ manifest, design, fabricColor }: GarmentPreviewSceneProps) {
+export default function StudioStartScene({ manifest, design, fabricColor }: StudioStartSceneProps) {
   const [fontsReady, setFontsReady] = useState(false);
   const [fontError, setFontError] = useState<unknown>(null);
 

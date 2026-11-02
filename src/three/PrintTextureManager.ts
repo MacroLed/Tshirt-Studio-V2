@@ -108,8 +108,11 @@ export class PrintTextureManager {
     return report;
   }
 
+  /**
+   * Zwalnia pamięć GPU. Płótna zostają: React w trybie deweloperskim wywołuje sprzątanie
+   * i ponowne uruchomienie efektów, a tekstura sama załaduje się przy kolejnym użyciu.
+   */
   dispose(): void {
     for (const slot of this.slots.values()) slot.texture.dispose();
-    this.slots.clear();
   }
 }
