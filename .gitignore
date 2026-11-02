@@ -1,0 +1,28 @@
+# Zależności i build
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Pliki generowane przez narzędzia
+next-env.d.ts
+*.tsbuildinfo
+__pycache__/
+
+# Wyniki pipeline'u modeli (odtwarzalne ze skryptu)
+assets-src/garments/out/
+*.blend1
+
+# Testy
+playwright-report/
+test-results/
+
+# Sekrety i środowisko
+.env
+.env.*
+!.env.example
+
+# System
+.DS_Store
+Thumbs.db

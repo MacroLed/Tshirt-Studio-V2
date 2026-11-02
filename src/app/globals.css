@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+
+/*
+ * Tokeny systemu projektowego. Kolory nawiązują do neutralnego tła studia z renderów,
+ * żeby interfejs uzupełniał scenę 3D, a nie z nią konkurował.
+ */
+@theme {
+  --color-canvas: #d6d3cc;
+  --color-surface: #ece9e3;
+  --color-ink: #1a1917;
+  --color-muted: #55524c;
+  --color-line: #1a191726;
+  --color-accent: #6b2a20;
+  --color-on-accent: #f4f1ea;
+
+  --font-display: var(--font-instrument-serif), 'Times New Roman', serif;
+  --font-sans: var(--font-hanken-grotesk), system-ui, sans-serif;
+
+  --text-eyebrow: 0.75rem;
+  --tracking-eyebrow: 0.14em;
+
+  --ease-studio: cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+
+html {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100dvh;
+  background-color: var(--color-canvas);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

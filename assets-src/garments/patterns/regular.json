@@ -1,0 +1,41 @@
+{
+  "id": "regular",
+  "fit": "regular",
+  "version": 1,
+  "mesh_cm": 0.85,
+  "pin_max_x": 19.5,
+  "cloth": {
+    "mass": 0.2,
+    "air_damping": 3.0,
+    "hem_tension": 45.0,
+    "hem_compression": 14.0,
+    "hem_bending": 0.4,
+    "hem_goal_weight": 0.5,
+    "tension": 40.0,
+    "compression": 10.0,
+    "shear": 15.0,
+    "bending": 0.1,
+    "shrink_min": -0.012,
+    "shrink_max": 0.02,
+    "pressure": 0.0
+  },
+  "neck_half_width": 9.0,
+  "neck_drop_front": 9.0,
+  "neck_drop_back": 2.0,
+  "rib_width": 2.0,
+  "shoulder_x": 23.0,
+  "shoulder_y": -5.0,
+  "armhole_curve": 3.0,
+  "chest_half": 26.0,
+  "underarm_y": -25.0,
+  "hem_y": -72.0,
+  "hem_curve": 0.8,
+  "sleeve_length": 22.0,
+  "sleeve_angle_deg": 38.0,
+  "cuff_width": 18.0,
+  "print_areas": {
+    "front": { "width_mm": 350, "height_mm": 450, "top_cm": -12.0 },
+    "back": { "width_mm": 350, "height_mm": 450, "top_cm": -7.0 },
+    "sleeve": { "width_mm": 100, "height_mm": 100, "start_cm": 6.0 }
+  }
+}
