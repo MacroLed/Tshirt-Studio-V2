@@ -259,6 +259,7 @@ Kwoty jako liczby całkowite w groszach. RLS włączony na każdej tabeli.
   2. Przeglądarka wysyła plik bezpośrednio.
   3. Endpoint finalizacji sprawdza sygnaturę bajtów, rozmiar i wymiary, re-enkoduje przez sharp (usuwa metadane), a dopiero potem przenosi plik do `assets`.
 - **SVG:** sanityzacja listą dozwolonych elementów, rysowanie wyłącznie jako obraz (skrypty się wtedy nie wykonują), rasteryzacja na serwerze przez resvg. Nigdy nie wstawiamy SVG do DOM.
+- **Stan obecny (do ETAPU 4):** obrazy są sprawdzane tylko w przeglądarce i trzymane w jej pamięci (`features/studio/imageAssets.ts`), więc znikają po odświeżeniu strony. Ta walidacja służy wygodzie użytkownika i nie zastępuje kontroli na serwerze. Dla SVG działa na razie lista zakazanych elementów i odwołań, a lista dozwolonych powstanie razem z zapisem plików. Wspólne zasady są w `core/design/imageRules.ts`.
 - **Ceny:** serwer zawsze wylicza je sam z bazy i dokumentu. Kwota z przeglądarki jest ignorowana.
 - **Płatności:** status zamówienia zmienia wyłącznie zweryfikowany podpisem webhook. Brak jakiegokolwiek symulowanego potwierdzenia; w dev tylko oficjalny tryb testowy Stripe, widocznie oznaczony.
 - **Eksport produkcyjny:** osobny endpoint dostępny dla admina, renderuje 300 DPI z `production_profiles` (np. 35×45 cm to ok. 4134×5315 px), PNG z przezroczystością i zapisanym DPI, osobno dla każdego obszaru.

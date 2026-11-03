@@ -4,14 +4,18 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { FONT_CATALOG } from '@/core/compositor/fontCatalog';
 import type { AreaStatus } from '@/core/design/geometry';
-import type { DesignElement, TextElement } from '@/core/design/schema';
+import { effectiveDpi, GOOD_DPI, qualityLevel } from '@/core/design/imageRules';
+import type { DesignElement, ImageElement, TextElement } from '@/core/design/schema';
 import { STATUS_MESSAGES } from './elementStatus';
+import type { ImageAssetLibrary } from './imageAssets';
 import { PLACEMENT_LABELS } from './placementLabels';
 import type { StudioStore } from './studioStore';
 
 const INK_COLORS = ['#1A1917', '#EDEAE3', '#6B2A20', '#C8400F', '#C9B999', '#23483A', '#1E2A44', '#7A7870'];
 const MIN_TEXT_SIZE_MM = 3;
 const MAX_TEXT_SIZE_MM = 300;
+const MIN_IMAGE_WIDTH_MM = 3;
+const MAX_IMAGE_WIDTH_MM = 1000;
 
 function round(value: number): number {
   return Math.round(value * 10) / 10;
@@ -74,9 +78,11 @@ export function PropertiesPanel({
   store,
   focusRequest,
   statuses,
+  assets,
 }: {
   store: StudioStore;
   statuses: ReadonlyMap<string, AreaStatus> | null;
+  assets: ImageAssetLibrary;
   /** Identyfikator nowego tekstu: jego treść dostaje fokus, żeby od razu można było pisać. */
   focusRequest: string | null;
 }) {
@@ -126,6 +132,17 @@ export function PropertiesPanel({
           </ul>
         )}
       </section>
+
+      {selected?.type === 'image' && (
+        <ImageProperties
+          key={selected.id}
+          element={selected}
+          store={store}
+          assets={assets}
+          beginEdit={beginEdit}
+          endEdit={endEdit}
+        />
+      )}
 
       {selected?.type === 'text' && (
         <TextProperties
@@ -326,6 +343,119 @@ function TextProperties({
           ))}
         </div>
       </fieldset>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          data-testid="duplicate"
+          onClick={() => store.getState().duplicateSelected(crypto.randomUUID())}
+          className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-ink hover:text-canvas"
+        >
+          Duplikuj
+        </button>
+        <button
+          type="button"
+          data-testid="delete"
+          onClick={() => store.getState().removeSelected()}
+          className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-accent hover:text-on-accent"
+        >
+          Usuń
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ImageProperties({
+  element,
+  store,
+  assets,
+  beginEdit,
+  endEdit,
+}: {
+  element: ImageElement;
+  store: StudioStore;
+  assets: ImageAssetLibrary;
+  beginEdit: () => void;
+  endEdit: () => void;
+}) {
+  const update = store.getState().updateSelected;
+  const asset = assets.get(element.assetId);
+  const ratio = element.widthMm / element.heightMm;
+  const vector = asset?.kind === 'svg';
+  const dpi = asset && !vector ? effectiveDpi(asset.widthPx, element.widthMm) : null;
+  const quality = dpi === null ? 'good' : qualityLevel(dpi);
+
+  return (
+    <section className="space-y-4 border-b border-line p-4" data-testid="image-properties">
+      {asset && (
+        <p className="truncate text-xs text-muted" title={asset.fileName}>
+          {asset.fileName}, {vector ? 'grafika wektorowa' : `${asset.widthPx} × ${asset.heightPx} px`}
+        </p>
+      )}
+
+      <div data-testid="image-quality" data-level={quality}>
+        {vector ? (
+          <p className="text-xs text-muted">Grafika wektorowa drukuje się ostro w każdym rozmiarze.</p>
+        ) : dpi !== null && (
+          <>
+            <p className="text-xs">
+              Jakość druku: <strong>{Math.round(dpi)} DPI</strong>
+            </p>
+            {quality !== 'good' && (
+              <p role="status" className="mt-1 bg-surface p-2 text-xs">
+                {quality === 'poor'
+                  ? 'Obraz będzie na koszulce wyraźnie rozmazany. Zmniejsz go albo wgraj plik w większej rozdzielczości.'
+                  : `Obraz może być na koszulce nieco miękki. Dla ostrego wydruku zalecamy co najmniej ${GOOD_DPI} DPI.`}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <NumberField
+          label="Szerokość"
+          unit="mm"
+          value={element.widthMm}
+          min={MIN_IMAGE_WIDTH_MM}
+          max={MAX_IMAGE_WIDTH_MM}
+          testId="image-width"
+          // Wysokość wynika z proporcji: obraz nigdy nie jest zniekształcany.
+          onChange={(widthMm) => update({ widthMm, heightMm: widthMm / ratio })}
+          onFocus={beginEdit}
+          onBlur={endEdit}
+        />
+        <NumberField
+          label="Obrót"
+          unit="°"
+          value={element.rotationDeg}
+          min={-180}
+          max={180}
+          testId="element-rotation"
+          onChange={(rotationDeg) => update({ rotationDeg })}
+          onFocus={beginEdit}
+          onBlur={endEdit}
+        />
+        <NumberField
+          label="Pozycja X"
+          unit="mm"
+          value={element.xMm}
+          testId="element-x"
+          onChange={(xMm) => update({ xMm })}
+          onFocus={beginEdit}
+          onBlur={endEdit}
+        />
+        <NumberField
+          label="Pozycja Y"
+          unit="mm"
+          value={element.yMm}
+          testId="element-y"
+          onChange={(yMm) => update({ yMm })}
+          onFocus={beginEdit}
+          onBlur={endEdit}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <button

@@ -153,6 +153,58 @@ console.log('przeciąganie na 3D:', {
   maxMs: +sorted3d[sorted3d.length - 1].toFixed(1),
 });
 
+// Najgorszy przypadek: największy dozwolony obraz, rysowany od nowa przy każdym ruchu.
+await page.evaluate(async () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 8000;
+  canvas.height = 5000;
+  const context = canvas.getContext('2d');
+  const gradient = context.createLinearGradient(0, 0, 8000, 5000);
+  gradient.addColorStop(0, '#d0021b');
+  gradient.addColorStop(1, '#0a7bd0');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 8000, 5000);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+  const transfer = new DataTransfer();
+  transfer.items.add(new File([blob], 'duzy.jpg', { type: 'image/jpeg' }));
+  const input = document.querySelector('[data-testid="image-input"]');
+  input.files = transfer.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+});
+await page.getByTestId('image-properties').waitFor({ timeout: 60000 });
+await page.waitForTimeout(1500);
+const imageXBefore = Number(await page.getByTestId('element-x').inputValue());
+await page.evaluate(() => {
+  window.__frames = [];
+  let last = performance.now();
+  const tick = (now) => {
+    window.__frames.push(now - last);
+    last = now;
+    window.__frameLoop = requestAnimationFrame(tick);
+  };
+  window.__frameLoop = requestAnimationFrame(tick);
+});
+await page.mouse.move(viewX, viewY);
+await page.mouse.down();
+for (let step = 0; step < 180; step += 1) {
+  await page.mouse.move(viewX + Math.sin(step / 12) * 80, viewY + Math.cos(step / 17) * 90);
+  await page.waitForTimeout(16);
+}
+await page.mouse.up();
+// Bez tego wysoki wynik mógłby oznaczać, że obraz wcale nie był przeciągany.
+const imageXAfter = Number(await page.getByTestId('element-x').inputValue());
+if (imageXAfter === imageXBefore) problems.push('obraz 40 MP nie przesunął się podczas przeciągania');
+const framesImage = await page.evaluate(() => {
+  cancelAnimationFrame(window.__frameLoop);
+  return window.__frames.slice(1);
+});
+const sortedImage = [...framesImage].sort((a, b) => a - b);
+console.log('przeciąganie obrazu 40 MP:', {
+  fps: +(1000 / (framesImage.reduce((sum, value) => sum + value, 0) / framesImage.length)).toFixed(1),
+  p95Ms: +sortedImage[Math.floor(sortedImage.length * 0.95)].toFixed(1),
+  maxMs: +sortedImage[sortedImage.length - 1].toFixed(1),
+});
+
 const stats = await page.evaluate(() => window.__stats);
 console.log('wieszak:', rackStats);
 const gpu = await page.evaluate(() => {

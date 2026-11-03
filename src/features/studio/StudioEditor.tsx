@@ -6,13 +6,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import { useStore } from 'zustand';
 import type { Product } from '@/core/catalog/schema';
 import { createWorkingCopy } from '@/core/design/commands';
-import { PLACEMENT_IDS, type DesignDocument, type PlacementId } from '@/core/design/schema';
+import { initialImageSize } from '@/core/design/imageRules';
+import { PLACEMENT_IDS, type DesignDocument, type ImageElement, type PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { loadPrintFonts } from '@/three/printFonts';
 import { PrintTextureManager } from '@/three/PrintTextureManager';
 import { WebGLGuard } from '@/three/WebGLGuard';
 import { AreaWarning } from './AreaWarning';
 import { ColorPicker } from './ColorPicker';
+import { ImageAssetLibrary, type ImageAsset } from './imageAssets';
+import { ImageUpload } from './ImageUpload';
 import { computeStatuses, STATUS_MESSAGES } from './elementStatus';
 import { FlatCanvas } from './FlatCanvas';
 import { PLACEMENT_LABELS } from './placementLabels';
@@ -87,7 +90,10 @@ export default function StudioEditor({
   initialColor: string;
 }) {
   const [store] = useState(() => createStudioStore(createWorkingCopy(product.originalDesign, initialColor)));
-  const [textures] = useState(() => new PrintTextureManager(manifest));
+  const [assets] = useState(() => new ImageAssetLibrary());
+  const [textures] = useState(
+    () => new PrintTextureManager(manifest, { resolveImage: (assetId) => assets.getImage(assetId) }),
+  );
   const [fontsReady, setFontsReady] = useState(false);
   const [fontError, setFontError] = useState<unknown>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null);
@@ -210,6 +216,27 @@ export default function StudioEditor({
     setMobilePanel((panel) => (panel === null ? panel : 'properties'));
   };
 
+  const addImage = (asset: ImageAsset) => {
+    const area = manifest.placements[active]?.printArea;
+    if (!area) return;
+    const size = initialImageSize(area, asset.widthPx, asset.heightPx, asset.kind === 'svg');
+    const element: ImageElement = {
+      type: 'image',
+      id: crypto.randomUUID(),
+      name: asset.fileName,
+      assetId: asset.id,
+      xMm: area.widthMm / 2,
+      yMm: area.heightMm / 2,
+      rotationDeg: 0,
+      opacity: 1,
+      hidden: false,
+      locked: false,
+      ...size,
+    };
+    store.getState().addElement(element);
+    setMobilePanel((panel) => (panel === null ? panel : 'properties'));
+  };
+
   const panelClass = (panel: Exclude<MobilePanel, null>) =>
     `${mobilePanel === panel ? 'absolute inset-0 z-20 block pt-12' : 'hidden'} overflow-y-auto bg-canvas lg:static lg:z-auto lg:block lg:pt-0`;
 
@@ -264,7 +291,9 @@ export default function StudioEditor({
               >
                 Dodaj tekst
               </button>
-              <p className="mt-2 text-xs text-muted">Logo, obrazy, gotowe wzory i warstwy pojawią się w kolejnych krokach.</p>
+              <div className="mt-2">
+                <ImageUpload library={assets} onAdded={addImage} />
+              </div>
             </PanelSection>
             <PanelSection>
               <ColorPicker colors={product.colors} value={document.fabricColor} onChange={setColor} />
@@ -379,7 +408,7 @@ export default function StudioEditor({
                 measure={measure}
               />
             </div>
-            <PropertiesPanel store={store} focusRequest={focusRequest} statuses={statuses?.[active].byElement ?? null} />
+            <PropertiesPanel store={store} focusRequest={focusRequest} statuses={statuses?.[active].byElement ?? null} assets={assets} />
           </aside>
         )}
 
