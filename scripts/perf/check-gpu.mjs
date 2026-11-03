@@ -205,6 +205,46 @@ console.log('przeciąganie obrazu 40 MP:', {
   maxMs: +sortedImage[sortedImage.length - 1].toFixed(1),
 });
 
+// Grupa z tym samym obrazem 40 MP i tekstem: obracanie zmienia wszystkie elementy przy każdym ruchu.
+await page.locator('body').click({ position: { x: 5, y: 5 } });
+await page.keyboard.press('Control+a');
+const rotateHandle = await page.getByTestId('group-box').getByTestId('handle-rotate').boundingBox();
+const groupCorner = await page.getByTestId('group-box').getByTestId('handle-se').boundingBox();
+const pivotX = rotateHandle.x + rotateHandle.width / 2;
+const pivotY = groupCorner.y - (groupCorner.y - rotateHandle.y) / 2;
+const reach = (groupCorner.y - rotateHandle.y) / 2;
+await page.evaluate(() => {
+  window.__frames = [];
+  let last = performance.now();
+  const tick = (now) => {
+    window.__frames.push(now - last);
+    last = now;
+    window.__frameLoop = requestAnimationFrame(tick);
+  };
+  window.__frameLoop = requestAnimationFrame(tick);
+});
+await page.mouse.move(rotateHandle.x + rotateHandle.width / 2, rotateHandle.y + rotateHandle.height / 2);
+await page.mouse.down();
+for (let step = 0; step < 180; step += 1) {
+  const angle = (step / 180) * Math.PI;
+  await page.mouse.move(pivotX + Math.sin(angle) * reach, pivotY - Math.cos(angle) * reach);
+  await page.waitForTimeout(16);
+}
+await page.mouse.up();
+const framesGroup = await page.evaluate(() => {
+  cancelAnimationFrame(window.__frameLoop);
+  return window.__frames.slice(1);
+});
+const sortedGroup = [...framesGroup].sort((a, b) => a - b);
+console.log('obracanie grupy z obrazem 40 MP:', {
+  fps: +(1000 / (framesGroup.reduce((sum, value) => sum + value, 0) / framesGroup.length)).toFixed(1),
+  p95Ms: +sortedGroup[Math.floor(sortedGroup.length * 0.95)].toFixed(1),
+  maxMs: +sortedGroup[sortedGroup.length - 1].toFixed(1),
+});
+await page.getByTestId('element-row').filter({ hasText: 'duzy.jpg' }).click();
+const groupRotation = Number(await page.getByTestId('element-rotation').inputValue());
+if (groupRotation === 0) problems.push('grupa nie obróciła się podczas pomiaru');
+
 const stats = await page.evaluate(() => window.__stats);
 console.log('wieszak:', rackStats);
 const gpu = await page.evaluate(() => {

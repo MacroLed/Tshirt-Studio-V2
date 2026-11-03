@@ -202,7 +202,7 @@ describe('stan edytora: elementy', () => {
   it('usuwanie i duplikowanie działają na zaznaczonym elemencie', () => {
     const store = createStudioStore(fresh());
     store.getState().addElement(text());
-    store.getState().duplicateSelected('kopia');
+    store.getState().duplicateSelected(() => 'kopia');
     expect(store.getState().selectedId).toBe('kopia');
     expect(present(store).placements.front.elements).toHaveLength(3);
     store.getState().removeSelected();
@@ -214,7 +214,7 @@ describe('stan edytora: elementy', () => {
     const store = createStudioStore(fresh());
     const before = store.getState().history;
     store.getState().removeSelected();
-    store.getState().duplicateSelected('x');
+    store.getState().duplicateSelected(() => 'x');
     store.getState().updateSelected({ xMm: 1 });
     expect(store.getState().history).toBe(before);
   });

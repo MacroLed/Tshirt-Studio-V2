@@ -346,7 +346,7 @@ test.describe('edytor: tekst', () => {
 
     const x = Number(await page.getByTestId('element-x').inputValue());
     await page.locator('body').click({ position: { x: 640, y: 18 } });
-    await page.getByTestId('elements-list').getByRole('button').first().click();
+    await page.getByTestId('element-row').first().click();
     await page.keyboard.press('ArrowRight');
     await expect(page.getByTestId('element-x')).toHaveValue(String(x + 1));
     await page.keyboard.press('Shift+ArrowRight');
@@ -358,15 +358,15 @@ test.describe('edytor: tekst', () => {
     await page.keyboard.press('Backspace');
     await expect(content).toHaveValue('Pierwszy wiersz\nDrug');
     await content.blur();
-    await page.getByTestId('elements-list').getByRole('button').first().click();
+    await page.getByTestId('element-row').first().click();
 
     await page.keyboard.press('Control+d');
-    await expect(page.getByTestId('elements-list').getByRole('button')).toHaveCount(2);
+    await expect(page.getByTestId('element-row')).toHaveCount(2);
     await page.keyboard.press('Delete');
-    await expect(page.getByTestId('elements-list').getByRole('button')).toHaveCount(1);
+    await expect(page.getByTestId('element-row')).toHaveCount(1);
     await page.getByTestId('delete').waitFor({ state: 'detached' });
     await page.keyboard.press('Control+z');
-    await expect(page.getByTestId('elements-list').getByRole('button')).toHaveCount(2);
+    await expect(page.getByTestId('element-row')).toHaveCount(2);
   });
 
   test('obszary są niezależne: tekst na plecach nie zmienia przodu', async ({ page }, testInfo) => {
@@ -382,7 +382,7 @@ test.describe('edytor: tekst', () => {
     await expect(page.getByTestId('selection-box')).toHaveCount(0);
     expect(await flatInk(page)).toEqual(frontInk);
     await page.getByTestId('placement-back').click();
-    await expect(page.getByTestId('elements-list').getByRole('button')).toHaveCount(2);
+    await expect(page.getByTestId('element-row')).toHaveCount(2);
   });
 
   test('wyjście z niezapisanym projektem wymaga potwierdzenia', async ({ page }, testInfo) => {
@@ -492,7 +492,7 @@ test.describe('edytor: pole nadruku', () => {
     await page.getByTestId('placement-back').click();
     await expect(page.getByTestId('placement-warning-front')).toBeVisible();
     await page.getByTestId('placement-front').click();
-    await page.getByTestId('elements-list').getByRole('button').first().click();
+    await page.getByTestId('element-row').first().click();
 
     await page.getByTestId('fit-to-area').click();
     await expect(page.getByTestId('selection-box')).toHaveAttribute('data-status', 'inside');

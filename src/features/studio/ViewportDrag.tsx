@@ -6,14 +6,16 @@ import { Mesh, Raycaster, Vector2, Vector3, type Object3D } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { Canvas2DLike } from '@/core/compositor/canvasLike';
 import { elementBox } from '@/core/compositor/elementBounds';
-import { containsPoint, moveWithinArea, type Point } from '@/core/design/geometry';
+import { containsPoint, moveGroupWithinArea, moveWithinArea, type GroupItem, type Point } from '@/core/design/geometry';
 import { PLACEMENT_IDS, type DesignElement, type PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { uvToMm } from '@/core/garment/printMapping';
-import type { StudioStore } from './studioStore';
+import { movableSelection, type StudioStore } from './studioStore';
 
 /** Większe przesunięcie to obrót kamery, a nie kliknięcie w tkaninę. */
 const CLICK_MAX_PX = 6;
+/** Mniejszy ruch grupy na tkaninie traktujemy jako kliknięcie w jej element. */
+const GROUP_CLICK_MAX_MM = 2;
 
 interface PrintHit {
   placement: PlacementId;
@@ -28,6 +30,15 @@ interface DragState {
   placement: PlacementId;
   /** Różnica między środkiem elementu a chwyconym punktem, żeby element nie przeskakiwał. */
   grab: Point;
+}
+
+interface GroupDragState {
+  pointerId: number;
+  placement: PlacementId;
+  start: Point;
+  items: GroupItem[];
+  clicked: string;
+  moved: boolean;
 }
 
 /**
@@ -110,6 +121,7 @@ export function ViewportDrag({
     };
 
     let drag: DragState | null = null;
+    let groupDrag: GroupDragState | null = null;
     let press: { x: number; y: number; moved: boolean } | null = null;
     let activePointers = 0;
     let hoverFrame = 0;
@@ -131,6 +143,27 @@ export function ViewportDrag({
         press = null;
         return;
       }
+      if (event.ctrlKey || event.metaKey || event.shiftKey) {
+        state.toggleInSelection(element.id);
+        if (controls) controls.enabled = false;
+        press = null;
+        return;
+      }
+      if (state.selectedIds.length > 1 && state.selectedIds.includes(element.id)) {
+        state.beginGesture();
+        groupDrag = {
+          pointerId: event.pointerId,
+          placement: hit.placement,
+          start: hit.mm,
+          items: movableSelection(state),
+          clicked: element.id,
+          moved: false,
+        };
+        press = null;
+        if (controls) controls.enabled = false;
+        host.style.cursor = 'grabbing';
+        return;
+      }
       state.select(element.id);
       state.beginGesture();
       drag = {
@@ -146,6 +179,18 @@ export function ViewportDrag({
 
     const onPointerMove = (event: PointerEvent) => {
       if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > CLICK_MAX_PX) press.moved = true;
+
+      if (groupDrag) {
+        if (event.pointerId !== groupDrag.pointerId) return;
+        const panel = panels.get(groupDrag.placement);
+        const hit = panel ? pick(event, panel) : null;
+        const area = manifest.placements[groupDrag.placement]?.printArea;
+        if (!hit || !area) return;
+        const delta = { x: hit.unboundedMm.x - groupDrag.start.x, y: hit.unboundedMm.y - groupDrag.start.y };
+        if (Math.hypot(delta.x, delta.y) > GROUP_CLICK_MAX_MM) groupDrag.moved = true;
+        if (groupDrag.moved) store.getState().moveSelection(moveGroupWithinArea(groupDrag.items, delta, area));
+        return;
+      }
 
       if (drag) {
         if (event.pointerId !== drag.pointerId) return;
@@ -171,11 +216,16 @@ export function ViewportDrag({
     const onPointerEnd = (event: PointerEvent) => {
       activePointers = Math.max(0, activePointers - 1);
       if (controls) controls.enabled = true;
-      if (drag && event.pointerId === drag.pointerId) {
+      if (groupDrag && event.pointerId === groupDrag.pointerId) {
+        if (!groupDrag.moved) store.getState().select(groupDrag.clicked);
+        store.getState().endGesture();
+        groupDrag = null;
+        host.style.cursor = 'grab';
+      } else if (drag && event.pointerId === drag.pointerId) {
         store.getState().endGesture();
         drag = null;
         host.style.cursor = 'grab';
-      } else if (press && !press.moved && event.type === 'pointerup') {
+      } else if (press && !press.moved && event.type === 'pointerup' && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
         // Kliknięcie w tkaninę bez elementu czyści zaznaczenie.
         store.getState().select(null);
       }

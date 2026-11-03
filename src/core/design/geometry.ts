@@ -20,7 +20,8 @@ export type Corner = (typeof CORNERS)[number];
 const SIGNS: Record<Corner, [number, number]> = { nw: [-1, -1], ne: [1, -1], se: [1, 1], sw: [-1, 1] };
 const OPPOSITE: Record<Corner, Corner> = { nw: 'se', ne: 'sw', se: 'nw', sw: 'ne' };
 
-function rotate(x: number, y: number, degrees: number): Point {
+/** Obrót wektora; dodatni kąt to ruch wskazówek zegara, bo oś Y biegnie w dół. */
+export function rotatePoint(x: number, y: number, degrees: number): Point {
   const radians = (degrees * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
@@ -29,18 +30,23 @@ function rotate(x: number, y: number, degrees: number): Point {
 
 export function cornerPosition(box: ElementBox, corner: Corner): Point {
   const [sx, sy] = SIGNS[corner];
-  const offset = rotate((sx * box.width) / 2, (sy * box.height) / 2, box.rotationDeg);
+  const offset = rotatePoint((sx * box.width) / 2, (sy * box.height) / 2, box.rotationDeg);
   return { x: box.x + offset.x, y: box.y + offset.y };
 }
 
+/** Narożnik naprzeciw chwyconego: przy skalowaniu stoi w miejscu. */
+export function anchorOfCorner(box: ElementBox, corner: Corner): Point {
+  return cornerPosition(box, OPPOSITE[corner]);
+}
+
 export function containsPoint(box: ElementBox, point: Point): boolean {
-  const local = rotate(point.x - box.x, point.y - box.y, -box.rotationDeg);
+  const local = rotatePoint(point.x - box.x, point.y - box.y, -box.rotationDeg);
   return Math.abs(local.x) <= box.width / 2 && Math.abs(local.y) <= box.height / 2;
 }
 
 /** Punkt uchwytu obrotu: nad środkiem górnej krawędzi, po obrocie elementu. */
 export function rotationHandlePosition(box: ElementBox, gap: number): Point {
-  const offset = rotate(0, -box.height / 2 - gap, box.rotationDeg);
+  const offset = rotatePoint(0, -box.height / 2 - gap, box.rotationDeg);
   return { x: box.x + offset.x, y: box.y + offset.y };
 }
 
@@ -74,8 +80,12 @@ export function scaleFromCorner(box: ElementBox, corner: Corner, pointer: Point,
 export function rotationFromPointer(center: Point, pointer: Point, snapDegrees = 0): number {
   const angle = (Math.atan2(pointer.y - center.y, pointer.x - center.x) * 180) / Math.PI + 90;
   const snapped = snapDegrees > 0 ? Math.round(angle / snapDegrees) * snapDegrees : angle;
-  // Zakres od -180 do 180, żeby wartość w panelu nie przekraczała pełnego obrotu.
-  return ((snapped + 540) % 360) - 180;
+  return normalizeDegrees(snapped);
+}
+
+/** Zakres od -180 do 180, żeby wartość w panelu nie przekraczała pełnego obrotu. */
+export function normalizeDegrees(degrees: number): number {
+  return ((((degrees + 180) % 360) + 360) % 360) - 180;
 }
 
 export interface AreaMove {
@@ -101,6 +111,31 @@ export function moveWithinArea(
   };
 }
 
+export interface GroupItem extends Point {
+  id: string;
+}
+
+/**
+ * Pozycje przeciąganej grupy. Wszystkie elementy dostają to samo przesunięcie, ograniczone tak,
+ * żeby żaden środek nie opuścił pola: układ grupy się nie zmienia. Grupa nie przyciąga się do osi,
+ * bo oś dotyczy jednego elementu, a nie całego układu.
+ */
+export function moveGroupWithinArea(
+  items: readonly GroupItem[],
+  delta: Point,
+  area: { widthMm: number; heightMm: number },
+): Map<string, Point> {
+  // Zero w zakresie: element leżący już poza polem nie może wymusić skoku całej grupy.
+  const clampAxis = (wanted: number, limit: number, axis: 'x' | 'y') => {
+    const low = Math.min(0, Math.max(...items.map((item) => -item[axis])));
+    const high = Math.max(0, Math.min(...items.map((item) => limit - item[axis])));
+    return Math.min(high, Math.max(low, wanted));
+  };
+  const dx = clampAxis(delta.x, area.widthMm, 'x');
+  const dy = clampAxis(delta.y, area.heightMm, 'y');
+  return new Map(items.map((item) => [item.id, { x: item.x + dx, y: item.y + dy }]));
+}
+
 export type AreaStatus = 'inside' | 'outsideSafe' | 'clipped';
 
 function halfExtents(box: ElementBox): { x: number; y: number } {
@@ -111,6 +146,17 @@ function halfExtents(box: ElementBox): { x: number; y: number } {
     x: (box.width / 2) * cos + (box.height / 2) * sin,
     y: (box.width / 2) * sin + (box.height / 2) * cos,
   };
+}
+
+/** Nieobrócony prostokąt obejmujący wszystkie podane; null dla pustej listy. */
+export function boundsOfBoxes(boxes: readonly ElementBox[]): ElementBox | null {
+  if (boxes.length === 0) return null;
+  const extents = boxes.map((box) => ({ box, half: halfExtents(box) }));
+  const left = Math.min(...extents.map(({ box, half }) => box.x - half.x));
+  const right = Math.max(...extents.map(({ box, half }) => box.x + half.x));
+  const top = Math.min(...extents.map(({ box, half }) => box.y - half.y));
+  const bottom = Math.max(...extents.map(({ box, half }) => box.y + half.y));
+  return { x: (left + right) / 2, y: (top + bottom) / 2, width: right - left, height: bottom - top, rotationDeg: 0 };
 }
 
 /** Czy element mieści się w polu nadruku i w marginesie bezpiecznym; liczy się obrócony obrys. */

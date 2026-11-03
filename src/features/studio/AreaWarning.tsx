@@ -55,14 +55,16 @@ export function AreaWarning({
       }`}
     >
       <p>{STATUS_MESSAGES[status]}</p>
-      <button
-        type="button"
-        data-testid="fit-to-area"
-        onClick={fit}
-        className="shrink-0 cursor-pointer border border-current px-2 py-1 font-medium"
-      >
-        Dopasuj do pola
-      </button>
+      {!selected.locked && (
+        <button
+          type="button"
+          data-testid="fit-to-area"
+          onClick={fit}
+          className="shrink-0 cursor-pointer border border-current px-2 py-1 font-medium"
+        >
+          Dopasuj do pola
+        </button>
+      )}
     </div>
   );
 }

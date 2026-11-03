@@ -173,7 +173,7 @@ test.describe('edytor: obrazy', () => {
     await expect(page.getByTestId('elements-list')).toContainText('zdjecie.jpg');
     await upload(page, 'obraz.webp', 'image/webp', canvas.toBuffer('image/webp'));
     await expect(page.getByTestId('elements-list')).toContainText('obraz.webp');
-    await expect(page.getByTestId('elements-list').getByRole('button')).toHaveCount(3);
+    await expect(page.getByTestId('element-row')).toHaveCount(3);
   });
 
   test('SVG z samym viewBox i gradientem wewnętrznym zachowuje proporcje', async ({ page }) => {
@@ -243,10 +243,10 @@ test.describe('edytor: obrazy', () => {
     await upload(page, 'logo.png', 'image/png', pngBuffer(1600, 1600));
     await expect(page.getByTestId('image-properties')).toBeVisible();
     await page.getByTestId('duplicate').click();
-    await expect(page.getByTestId('elements-list').getByRole('button')).toHaveCount(2);
+    await expect(page.getByTestId('element-row')).toHaveCount(2);
     await page.getByTestId('delete').click();
-    await expect(page.getByTestId('elements-list').getByRole('button')).toHaveCount(1);
-    await page.getByTestId('elements-list').getByRole('button').first().click();
+    await expect(page.getByTestId('element-row')).toHaveCount(1);
+    await page.getByTestId('element-row').first().click();
 
     const x = page.getByTestId('element-x');
     const start = Number(await x.inputValue());

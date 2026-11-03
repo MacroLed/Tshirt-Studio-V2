@@ -8,6 +8,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useStore } from 'zustand';
 import type { Canvas2DLike } from '@/core/compositor/canvasLike';
 import { elementBox } from '@/core/compositor/elementBounds';
+import { boundsOfBoxes } from '@/core/design/geometry';
 import type { DesignDocument, PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { stepCameraFlight, type CameraGoal } from '@/three/cameraFlight';
@@ -113,16 +114,21 @@ export default function StudioViewport({
   showGuides: boolean;
 }) {
   const active = document.editor.activePlacement;
-  const selectedId = useStore(store, (state) => state.selectedId);
+  const selectedIds = useStore(store, (state) => state.selectedIds);
   const viewRequest = useStore(store, (state) => state.viewRequest);
   const [measure] = useState<Canvas2DLike<CanvasImageSource> | null>(() =>
     window.document.createElement('canvas').getContext('2d'),
   );
-  const selected = document.placements[active].elements.find((element) => element.id === selectedId);
-  const selection = useMemo(
-    () => (showGuides && selected && measure ? { placement: active, box: elementBox(measure, selected) } : null),
-    [showGuides, selected, measure, active],
-  );
+  const elements = document.placements[active].elements;
+  const selection = useMemo(() => {
+    if (!showGuides || !measure) return null;
+    // Ukrytego elementu nie ma na koszulce, więc nie ma też czego obrysować.
+    const boxes = elements
+      .filter((element) => selectedIds.includes(element.id) && !element.hidden)
+      .map((element) => elementBox(measure, element));
+    const box = boxes.length > 1 ? boundsOfBoxes(boxes) : boxes[0];
+    return box ? { placement: active, box } : null;
+  }, [showGuides, elements, selectedIds, measure, active]);
   return (
     <Canvas
       shadows

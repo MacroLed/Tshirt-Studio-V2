@@ -192,7 +192,7 @@ test.describe('przeciąganie na koszulce 3D', () => {
     await page.mouse.up();
     await page.getByTestId('preview-toggle').click();
     await expect(page.getByTestId('tool-panel')).toBeVisible();
-    await page.getByTestId('elements-list').getByRole('button').first().click();
+    await page.getByTestId('element-row').first().click();
     expect(await numberIn(x)).toBe(start);
   });
 

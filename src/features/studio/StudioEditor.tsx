@@ -164,7 +164,8 @@ export default function StudioEditor({
       if (withModifier) {
         if (key === 'z' && !event.shiftKey) state.undo();
         else if (key === 'y' || (key === 'z' && event.shiftKey)) state.redo();
-        else if (key === 'd') state.duplicateSelected(crypto.randomUUID());
+        else if (key === 'd') state.duplicateSelected(() => crypto.randomUUID());
+        else if (key === 'a') state.selectAll();
         else return;
         event.preventDefault();
         return;
@@ -174,7 +175,7 @@ export default function StudioEditor({
         state.select(null);
         return;
       }
-      if (state.selectedId === null) return;
+      if (state.selectedIds.length === 0) return;
       if (key === 'delete' || key === 'backspace') {
         state.removeSelected();
         event.preventDefault();
@@ -189,11 +190,7 @@ export default function StudioEditor({
       };
       const offset = offsets[key];
       if (!offset) return;
-      const { present } = state.history;
-      const element = present.placements[present.editor.activePlacement].elements.find(
-        (candidate) => candidate.id === state.selectedId,
-      );
-      if (element) state.updateSelected({ xMm: element.xMm + offset[0], yMm: element.yMm + offset[1] });
+      state.nudgeSelection(offset[0], offset[1]);
       event.preventDefault();
     };
     window.addEventListener('keydown', onKeyDown);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import { FONT_CATALOG } from '@/core/compositor/fontCatalog';
 import type { AreaStatus } from '@/core/design/geometry';
@@ -73,7 +73,72 @@ function NumberField({
   );
 }
 
-/** Lista elementów albo właściwości zaznaczonego elementu. */
+/** Mały przycisk w wierszu warstwy, z obszarem dotyku większym na telefonie. */
+function LayerButton({
+  label,
+  testId,
+  disabled,
+  pressed,
+  onClick,
+  children,
+}: {
+  label: string;
+  testId: string;
+  disabled?: boolean;
+  pressed?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      disabled={disabled}
+      data-testid={testId}
+      onClick={onClick}
+      className="grid size-9 shrink-0 cursor-pointer place-items-center hover:bg-ink/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent aria-pressed:bg-ink aria-pressed:text-canvas lg:size-7"
+    >
+      <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+        {children}
+      </svg>
+    </button>
+  );
+}
+
+function LockedNotice() {
+  return (
+    <p className="bg-surface p-2 text-xs" data-testid="locked-notice">
+      Ten element jest zablokowany. Odblokuj go na liście warstw, żeby go zmienić.
+    </p>
+  );
+}
+
+function ElementActions({ store }: { store: StudioStore }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        data-testid="duplicate"
+        onClick={() => store.getState().duplicateSelected(() => crypto.randomUUID())}
+        className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-ink hover:text-canvas disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Duplikuj
+      </button>
+      <button
+        type="button"
+        data-testid="delete"
+        onClick={() => store.getState().removeSelected()}
+        className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-accent hover:text-on-accent disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Usuń
+      </button>
+    </div>
+  );
+}
+
+/** Lista warstw oraz właściwości zaznaczonego elementu lub grupy. */
 export function PropertiesPanel({
   store,
   focusRequest,
@@ -89,8 +154,12 @@ export function PropertiesPanel({
   const placement = useStore(store, (state) => state.history.present.editor.activePlacement);
   const elements = useStore(store, (state) => state.history.present.placements[placement].elements);
   const selectedId = useStore(store, (state) => state.selectedId);
+  const selectedIds = useStore(store, (state) => state.selectedIds);
   const selected = elements.find((element) => element.id === selectedId) ?? null;
   const content = useRef<HTMLTextAreaElement>(null);
+  // Tryb dla ekranów dotykowych, gdzie nie ma klawisza Ctrl.
+  const [multiMode, setMultiMode] = useState(false);
+  const selectingMany = multiMode && elements.length > 1;
 
   useEffect(() => {
     if (focusRequest && focusRequest === selectedId) {
@@ -105,7 +174,20 @@ export function PropertiesPanel({
   return (
     <>
       <section className="border-b border-line p-4">
-        <h2 className="text-sm font-medium">Elementy: {PLACEMENT_LABELS[placement]}</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">Warstwy: {PLACEMENT_LABELS[placement]}</h2>
+          {elements.length > 1 && (
+            <button
+              type="button"
+              aria-pressed={selectingMany}
+              data-testid="multi-select-toggle"
+              onClick={() => setMultiMode((value) => !value)}
+              className="cursor-pointer border border-line px-2 py-1 text-xs aria-pressed:bg-ink aria-pressed:text-canvas"
+            >
+              Zaznacz kilka
+            </button>
+          )}
+        </div>
         {elements.length === 0 ? (
           <p className="mt-2 text-xs text-muted" data-testid="elements-empty">
             Ten obszar jest pusty.
@@ -113,12 +195,19 @@ export function PropertiesPanel({
         ) : (
           <ul className="mt-2 space-y-1 text-sm" data-testid="elements-list">
             {[...elements].reverse().map((element: DesignElement) => (
-              <li key={element.id}>
+              <li key={element.id} className="flex items-center gap-0.5" data-testid="layer-row">
                 <button
                   type="button"
-                  aria-pressed={element.id === selectedId}
-                  onClick={() => store.getState().select(element.id)}
-                  className="block w-full cursor-pointer truncate px-2 py-1 text-left hover:bg-ink/10 aria-pressed:bg-ink aria-pressed:text-canvas"
+                  data-testid="element-row"
+                  aria-pressed={selectedIds.includes(element.id)}
+                  onClick={(event) => {
+                    const state = store.getState();
+                    if (selectingMany || event.ctrlKey || event.metaKey || event.shiftKey) state.toggleInSelection(element.id);
+                    else state.select(element.id);
+                  }}
+                  className={`min-w-0 flex-1 cursor-pointer truncate px-2 py-1 text-left hover:bg-ink/10 aria-pressed:bg-ink aria-pressed:text-canvas ${
+                    element.hidden ? 'opacity-50' : ''
+                  }`}
                 >
                   {element.name}
                   {statuses?.get(element.id) === 'clipped' && (
@@ -127,11 +216,62 @@ export function PropertiesPanel({
                     </span>
                   )}
                 </button>
+                <LayerButton
+                  label={`Przenieś wyżej: ${element.name}`}
+                  testId="layer-up"
+                  disabled={element === elements.at(-1)}
+                  onClick={() => store.getState().moveLayer(element.id, 'forward')}
+                >
+                  <path d="M8 13V3M4 7l4-4 4 4" />
+                </LayerButton>
+                <LayerButton
+                  label={`Przenieś niżej: ${element.name}`}
+                  testId="layer-down"
+                  disabled={element === elements[0]}
+                  onClick={() => store.getState().moveLayer(element.id, 'backward')}
+                >
+                  <path d="M8 3v10M4 9l4 4 4-4" />
+                </LayerButton>
+                <LayerButton
+                  label={`Ukryj: ${element.name}`}
+                  testId="layer-hide"
+                  pressed={element.hidden}
+                  onClick={() => store.getState().setElementHidden(element.id, !element.hidden)}
+                >
+                  <path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z" />
+                  <circle cx="8" cy="8" r="2" />
+                  {element.hidden && <path d="M2.5 13.5l11-11" />}
+                </LayerButton>
+                <LayerButton
+                  label={`Zablokuj: ${element.name}`}
+                  testId="layer-lock"
+                  pressed={element.locked}
+                  onClick={() => store.getState().setElementLocked(element.id, !element.locked)}
+                >
+                  <rect x="3" y="7" width="10" height="7" />
+                  <path d={element.locked ? 'M5 7V5a3 3 0 0 1 6 0v2' : 'M5 7V5a3 3 0 0 1 5.8-1'} />
+                </LayerButton>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {selectedIds.length > 1 && (
+        <section className="space-y-3 border-b border-line p-4" data-testid="group-properties">
+          <p className="text-sm">Zaznaczone elementy: {selectedIds.length}</p>
+          <p className="text-xs text-muted">Przeciągnij jeden z nich, żeby przesunąć wszystkie. Uchwyty ramki skalują i obracają całą grupę. Zablokowane zostają bez zmian.</p>
+          <ElementActions store={store} />
+          <button
+            type="button"
+            data-testid="clear-selection"
+            onClick={() => store.getState().select(null)}
+            className="w-full cursor-pointer border border-line px-2 py-2 text-sm hover:bg-ink hover:text-canvas"
+          >
+            Odznacz
+          </button>
+        </section>
+      )}
 
       {selected?.type === 'image' && (
         <ImageProperties
@@ -176,7 +316,9 @@ function TextProperties({
   const weights = font?.weights ?? [400];
 
   return (
-    <section className="space-y-4 border-b border-line p-4" data-testid="text-properties">
+    <section className="border-b border-line p-4" data-testid="text-properties">
+      <fieldset disabled={element.locked} className="min-w-0 space-y-4">
+      {element.locked && <LockedNotice />}
       <div>
         <label htmlFor="text-content" className="text-xs text-muted">
           Treść
@@ -344,24 +486,8 @@ function TextProperties({
         </div>
       </fieldset>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          data-testid="duplicate"
-          onClick={() => store.getState().duplicateSelected(crypto.randomUUID())}
-          className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-ink hover:text-canvas"
-        >
-          Duplikuj
-        </button>
-        <button
-          type="button"
-          data-testid="delete"
-          onClick={() => store.getState().removeSelected()}
-          className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-accent hover:text-on-accent"
-        >
-          Usuń
-        </button>
-      </div>
+      <ElementActions store={store} />
+      </fieldset>
     </section>
   );
 }
@@ -387,7 +513,9 @@ function ImageProperties({
   const quality = dpi === null ? 'good' : qualityLevel(dpi);
 
   return (
-    <section className="space-y-4 border-b border-line p-4" data-testid="image-properties">
+    <section className="border-b border-line p-4" data-testid="image-properties">
+      <fieldset disabled={element.locked} className="min-w-0 space-y-4">
+      {element.locked && <LockedNotice />}
       {asset && (
         <p className="truncate text-xs text-muted" title={asset.fileName}>
           {asset.fileName}, {vector ? 'grafika wektorowa' : `${asset.widthPx} × ${asset.heightPx} px`}
@@ -457,24 +585,8 @@ function ImageProperties({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          data-testid="duplicate"
-          onClick={() => store.getState().duplicateSelected(crypto.randomUUID())}
-          className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-ink hover:text-canvas"
-        >
-          Duplikuj
-        </button>
-        <button
-          type="button"
-          data-testid="delete"
-          onClick={() => store.getState().removeSelected()}
-          className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-accent hover:text-on-accent"
-        >
-          Usuń
-        </button>
-      </div>
+      <ElementActions store={store} />
+      </fieldset>
     </section>
   );
 }
