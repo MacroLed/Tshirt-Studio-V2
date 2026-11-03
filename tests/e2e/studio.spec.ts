@@ -97,14 +97,9 @@ test.describe('edytor: układ i obszary', () => {
     await expect(page.getByTestId('flat-canvas')).toBeVisible();
     await expect(page.getByRole('tablist', { name: 'Obszar edycji' }).getByRole('tab')).toHaveCount(4);
     // Niedziałające jeszcze funkcje muszą być wyłączone i opisane, a nie udawać, że działają.
-    for (const [name, description] of [
-      ['Zapisz', /przeglądarce/],
-      ['Do koszyka', /ETAP/],
-    ] as const) {
-      const button = page.getByRole('button', { name, exact: true });
-      await expect(button).toBeDisabled();
-      await expect(button).toHaveAttribute('title', description);
-    }
+    const cart = page.getByRole('button', { name: 'Do koszyka', exact: true });
+    await expect(cart).toBeDisabled();
+    await expect(cart).toHaveAttribute('title', /ETAP/);
     expect(errors, errors.join('\n')).toEqual([]);
   });
 

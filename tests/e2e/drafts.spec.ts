@@ -48,7 +48,7 @@ const storedAssetCount = (page: Page) =>
         const opening = indexedDB.open('tshirt-studio');
         opening.onerror = () => reject(opening.error);
         opening.onsuccess = () => {
-          const count = opening.result.transaction('draftAssets').objectStore('draftAssets').count();
+          const count = opening.result.transaction('projectAssets').objectStore('projectAssets').count();
           count.onsuccess = () => {
             opening.result.close();
             resolve(count.result);
@@ -198,7 +198,7 @@ test.describe('edytor: zapis w przeglądarce', () => {
           const opening = indexedDB.open('tshirt-studio');
           opening.onerror = () => reject(opening.error);
           opening.onsuccess = () => {
-            const store = opening.result.transaction('drafts', 'readwrite').objectStore('drafts');
+            const store = opening.result.transaction('projects', 'readwrite').objectStore('projects');
             const all = store.getAll();
             all.onsuccess = () => {
               const draft = all.result[0];
@@ -229,7 +229,7 @@ test.describe('edytor: zapis w przeglądarce', () => {
           const opening = indexedDB.open('tshirt-studio');
           opening.onerror = () => reject(opening.error);
           opening.onsuccess = () => {
-            const store = opening.result.transaction('draftAssets', 'readwrite').objectStore('draftAssets');
+            const store = opening.result.transaction('projectAssets', 'readwrite').objectStore('projectAssets');
             const cursor = store.openCursor();
             cursor.onsuccess = () => {
               const entry = cursor.result!;

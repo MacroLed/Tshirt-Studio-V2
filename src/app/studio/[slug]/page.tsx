@@ -7,7 +7,7 @@ import { libraryRepository } from '@/server/library';
 
 interface StudioPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ color?: string | string[] }>;
+  searchParams: Promise<{ color?: string | string[]; project?: string | string[] }>;
 }
 
 export async function generateMetadata({ params }: StudioPageProps): Promise<Metadata> {
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: StudioPageProps): Promise<Met
 
 export default async function StudioPage({ params, searchParams }: StudioPageProps) {
   const { slug } = await params;
-  const { color } = await searchParams;
+  const { color, project } = await searchParams;
   const product = await catalogRepository.getProductBySlug(slug);
   if (!product) notFound();
   const manifest = getGarmentManifest(product.garmentVersionId);
@@ -30,11 +30,14 @@ export default async function StudioPage({ params, searchParams }: StudioPagePro
 
   return (
     <StudioEditorLoader
+      // Inny produkt lub projekt to osobna sesja edycji, ze świeżym stanem i historią.
+      key={`${product.id}:${typeof project === 'string' ? project : ''}`}
       product={product}
       products={products.map(({ id, slug: productSlug, name }) => ({ id, slug: productSlug, name }))}
       manifest={manifest}
       initialColor={requested?.hex ?? product.originalDesign.fabricColor}
       requestedColor={requested?.hex ?? null}
+      projectId={typeof project === 'string' ? project : null}
       libraryItems={libraryItems}
     />
   );

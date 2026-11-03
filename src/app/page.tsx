@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { RackFallback } from '@/features/rack/RackFallback';
 import { RackStage } from '@/features/rack/RackStage';
@@ -25,7 +26,12 @@ export default async function HomePage() {
       </RackStage>
       <section aria-label="Lista produktów">
         <div className="px-4 py-8 sm:px-8">
-          <h2 className="font-display text-3xl">Wszystkie koszulki</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <h2 className="font-display text-3xl">Wszystkie koszulki</h2>
+            <Link href="/projects" data-testid="projects-link" className="text-sm underline underline-offset-4">
+              Moje projekty
+            </Link>
+          </div>
           <div className="mt-4 max-w-xl">
             <PrototypeNotice>
               Produkty i ceny są przykładowe, a zakup nie jest jeszcze możliwy. Kliknij nazwę produktu, aby przejść do

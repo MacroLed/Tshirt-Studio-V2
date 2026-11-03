@@ -22,8 +22,10 @@ import { FlatCanvas } from './FlatCanvas';
 import { LibraryPanel } from './LibraryPanel';
 import { PLACEMENT_LABELS } from './placementLabels';
 import { PropertiesPanel } from './PropertiesPanel';
+import { renderThumbnail } from './projectThumbnail';
+import { SaveProjectDialog } from './SaveProjectDialog';
 import { SaveStatus } from './SaveStatus';
-import { hasUnsavedWork, useDraftPersistence } from './useDraftPersistence';
+import { hasUnsavedWork, useProjectPersistence } from './useProjectPersistence';
 import { createStudioStore, isDirty } from './studioStore';
 import { createTextElement, readableInkColor } from './textDefaults';
 
@@ -88,6 +90,7 @@ export default function StudioEditor({
   manifest,
   initialColor,
   requestedColor,
+  projectId,
   libraryItems,
 }: {
   product: Product;
@@ -96,6 +99,8 @@ export default function StudioEditor({
   initialColor: string;
   /** Kolor jawnie wskazany w adresie; null, gdy klient go nie wybrał. */
   requestedColor: string | null;
+  /** Zapisany projekt wskazany w adresie. */
+  projectId: string | null;
   libraryItems: LibraryItem[];
 }) {
   const [store] = useState(() => createStudioStore(createWorkingCopy(product.originalDesign, initialColor)));
@@ -103,7 +108,16 @@ export default function StudioEditor({
   const [textures] = useState(
     () => new PrintTextureManager(manifest, { resolveImage: (assetId) => assets.getImage(assetId) }),
   );
-  const saveState = useDraftPersistence({ store, assets, product, requestedColor });
+  const createThumbnail = useCallback((design: DesignDocument) => renderThumbnail(textures, design), [textures]);
+  const { state: saveState, project: openProject, saveAs, saveNow } = useProjectPersistence({
+    store,
+    assets,
+    product,
+    projectId,
+    requestedColor,
+    createThumbnail,
+  });
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [fontsLoaded, setFontsLoaded] = useState(false);
   // Rysujemy dopiero po przywróceniu szkicu: klient nie powinien zobaczyć mignięcia pustego wzoru.
   const fontsReady = fontsLoaded && saveState.kind !== 'checking';
@@ -277,8 +291,11 @@ export default function StudioEditor({
         <Link href="/" onClick={confirmLeave} className="text-sm text-muted underline-offset-4 hover:underline">
           ← Produkty
         </Link>
+        <Link href="/projects" onClick={confirmLeave} data-testid="projects-link" className="text-sm text-muted underline-offset-4 hover:underline">
+          Moje projekty
+        </Link>
         <h1 className="font-display text-2xl leading-none">{product.name}</h1>
-        <SaveStatus state={saveState} />
+        <SaveStatus state={saveState} project={openProject} />
         <div className="ml-auto flex flex-wrap items-center gap-1.5 sm:gap-2" role="toolbar" aria-label="Działania na projekcie">
           <ToolbarButton label="Cofnij" onClick={() => store.getState().undo()} disabled={!canUndo} testId="undo" />
           <ToolbarButton label="Ponów" onClick={() => store.getState().redo()} disabled={!canRedo} testId="redo" />
@@ -289,9 +306,15 @@ export default function StudioEditor({
             pressed={previewMode}
             testId="preview-toggle"
           />
-          {/* Oznaczone jako niedostępne, dopóki nie powstaną odpowiednie etapy. */}
+          <ToolbarButton
+            label="Zapisz"
+            testId="save"
+            disabled={saveState.kind === 'unavailable' || saveState.kind === 'checking'}
+            title={openProject ? 'Zmiany zapisują się same. Przycisk zapisuje je od razu.' : 'Zapisz projekt pod własną nazwą'}
+            onClick={() => (openProject ? saveNow() : setSaveDialogOpen(true))}
+          />
+          {/* Oznaczone jako niedostępne, dopóki nie powstanie odpowiedni etap. */}
           <span className="hidden gap-2 sm:flex">
-            <ToolbarButton label="Zapisz" disabled title="Na razie projekt zapisuje się sam w tej przeglądarce. Zapis pod nazwą pojawi się wkrótce." />
             <ToolbarButton label="Do koszyka" disabled title="Dostępne po uruchomieniu sklepu (ETAP 5)" />
           </span>
         </div>
@@ -435,6 +458,10 @@ export default function StudioEditor({
             </div>
             <PropertiesPanel store={store} focusRequest={focusRequest} statuses={statuses?.[active].byElement ?? null} assets={assets} />
           </aside>
+        )}
+
+        {saveDialogOpen && (
+          <SaveProjectDialog suggestedName={product.name} onSave={saveAs} onClose={() => setSaveDialogOpen(false)} />
         )}
 
         {mobilePanel && (
