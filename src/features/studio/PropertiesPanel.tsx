@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import { FONT_CATALOG } from '@/core/compositor/fontCatalog';
+import { createId } from '@/core/design/createId';
 import type { AreaStatus } from '@/core/design/geometry';
 import { effectiveDpi, GOOD_DPI, qualityLevel } from '@/core/design/imageRules';
 import type { DesignElement, ImageElement, TextElement } from '@/core/design/schema';
@@ -98,7 +99,7 @@ function LayerButton({
       disabled={disabled}
       data-testid={testId}
       onClick={onClick}
-      className="grid size-9 shrink-0 cursor-pointer place-items-center hover:bg-ink/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent aria-pressed:bg-ink aria-pressed:text-canvas lg:size-7"
+      className="grid size-10 shrink-0 cursor-pointer place-items-center hover:bg-ink/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent aria-pressed:bg-ink aria-pressed:text-canvas lg:size-7"
     >
       <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
         {children}
@@ -121,7 +122,7 @@ function ElementActions({ store }: { store: StudioStore }) {
       <button
         type="button"
         data-testid="duplicate"
-        onClick={() => store.getState().duplicateSelected(() => crypto.randomUUID())}
+        onClick={() => store.getState().duplicateSelected(createId)}
         className="cursor-pointer border border-line px-2 py-2 text-sm hover:bg-ink hover:text-canvas disabled:cursor-not-allowed disabled:opacity-40"
       >
         Duplikuj
@@ -205,7 +206,7 @@ export function PropertiesPanel({
                     if (selectingMany || event.ctrlKey || event.metaKey || event.shiftKey) state.toggleInSelection(element.id);
                     else state.select(element.id);
                   }}
-                  className={`min-w-0 flex-1 cursor-pointer truncate px-2 py-1 text-left hover:bg-ink/10 aria-pressed:bg-ink aria-pressed:text-canvas ${
+                  className={`min-w-0 flex-1 cursor-pointer truncate px-2 py-2.5 text-left lg:py-1 hover:bg-ink/10 aria-pressed:bg-ink aria-pressed:text-canvas ${
                     element.hidden ? 'opacity-50' : ''
                   }`}
                 >

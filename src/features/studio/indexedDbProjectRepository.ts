@@ -1,6 +1,14 @@
 import { collectAssetIds, migrateDesign } from '@/core/design/migrate';
 import { copyName } from '@/core/design/projectName';
 import type { DesignDocument } from '@/core/design/schema';
+import {
+  draftId,
+  type ProjectAssetSource,
+  type ProjectLoad,
+  type ProjectRepository,
+  type ProjectSummary,
+  type SaveTarget,
+} from '@/core/projects/repository';
 
 /**
  * Projekty w IndexedDB tej przeglądarki: dokument i pliki w jednej transakcji, żeby zapisany projekt
@@ -15,12 +23,6 @@ const PROJECTS = 'projects';
 const ASSETS = 'projectAssets';
 const OPEN_TIMEOUT_MS = 3000;
 
-export interface ProjectAssetSource {
-  id: string;
-  fileName: string;
-  blob: Blob;
-}
-
 interface ProjectRecord {
   id: string;
   /** false dla szkicu, który nie pojawia się na liście projektów. */
@@ -31,33 +33,6 @@ interface ProjectRecord {
   thumbnail: Blob | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ProjectSummary {
-  id: string;
-  name: string;
-  productId: string;
-  thumbnail: Blob | null;
-  createdAt: string;
-  updatedAt: string;
-  /** false, gdy dokument jest uszkodzony albo pochodzi z nowszej wersji aplikacji. */
-  readable: boolean;
-}
-
-export type ProjectLoad =
-  | { status: 'none' }
-  /** Dane uszkodzone, z nowszej aplikacji albo dla innego produktu lub modelu koszulki. */
-  | { status: 'incompatible' }
-  | { status: 'found'; name: string; named: boolean; document: DesignDocument; assets: ProjectAssetSource[] };
-
-export interface SaveTarget {
-  id: string;
-  name: string;
-  named: boolean;
-}
-
-export function draftId(productId: string): string {
-  return `draft:${productId}`;
 }
 
 function assetKey(projectId: string, assetId: string): string {
@@ -113,7 +88,7 @@ function upgradeFromVersion1(transaction: IDBTransaction): void {
   };
 }
 
-export class ProjectStorage {
+export class IndexedDbProjectRepository implements ProjectRepository {
   private database: Promise<IDBDatabase> | null = null;
 
   /** Czas oczekiwania jest ograniczony: edytor nie może wisieć przez zablokowaną przeglądarkę. */

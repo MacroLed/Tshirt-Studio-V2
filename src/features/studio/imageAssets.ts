@@ -1,3 +1,4 @@
+import { createId } from '@/core/design/createId';
 import {
   detectImageKind,
   dimensionsProblem,
@@ -127,7 +128,7 @@ export class ImageAssetLibrary {
     }
   }
 
-  async importFile(file: File, id: string = crypto.randomUUID()): Promise<ImportResult> {
+  async importFile(file: File, id: string = createId()): Promise<ImportResult> {
     if (file.size > MAX_FILE_BYTES) {
       const megabytes = Math.round(MAX_FILE_BYTES / (1024 * 1024));
       return { ok: false, error: `Plik „${file.name}” jest za duży. Maksymalny rozmiar to ${megabytes} MB.` };

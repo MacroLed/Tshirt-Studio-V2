@@ -408,6 +408,53 @@ test.describe('edytor: tekst', () => {
     await expect(page).toHaveURL(/\/studio\/nocturne$/, { timeout: 30_000 });
   });
 
+  test('telefon: status zapisu nie przesuwa koszulki, a cele dotyku są wygodne', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Dotyczy małych ekranów');
+    await open(page);
+    const viewport = page.getByTestId('studio-viewport');
+    const before = await viewport.boundingBox();
+    await page.getByTestId('open-tools').click();
+    await page.getByTestId('add-text').click();
+    await page.getByTestId('close-panel').click();
+    await expect(page.getByTestId('save-status')).toHaveAttribute('data-state', 'saved');
+    expect(await viewport.boundingBox()).toEqual(before);
+
+    const small = await page.evaluate(() =>
+      [...document.querySelectorAll('header a, header button, [role="tab"]')]
+        .map((element) => ({ name: element.textContent, box: element.getBoundingClientRect() }))
+        .filter(({ box }) => box.width > 0 && box.height < 39.5)
+        .map(({ name }) => name),
+    );
+    expect(small).toEqual([]);
+
+    await page.getByTestId('open-tools').click();
+    const search = page.getByTestId('library-search');
+    expect(await search.evaluate((element) => getComputedStyle(element).fontSize)).toBe('16px');
+    // Biblioteka nie ma własnego przewijania wewnątrz panelu.
+    const grid = page.getByTestId('library-grid');
+    expect(await grid.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(0);
+  });
+
+  test('bez crypto.randomUUID, czyli poza HTTPS, edytor i projekty działają', async ({ page }, testInfo) => {
+    desktopOnly(testInfo.project.name);
+    await page.addInitScript(() => {
+      Object.defineProperty(Crypto.prototype, 'randomUUID', { value: undefined });
+    });
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await open(page, '/studio/blanc');
+    await page.getByTestId('add-text').click();
+    await page.getByTestId('text-content').blur();
+    await page.getByTestId('library-item-symbol-star').click();
+    await page.getByTestId('duplicate').click();
+    await expect(page.getByTestId('element-row')).toHaveCount(3);
+    await page.getByTestId('save').click();
+    await page.getByTestId('project-name').fill('Bez HTTPS');
+    await page.getByTestId('save-confirm').click();
+    await expect(page.getByTestId('save-status')).toContainText('Bez HTTPS');
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
   test('telefon: 3D w pierwszym planie, panele i przeciąganie palcem', async ({ page, context }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'Dotyczy małych ekranów');
     await open(page);

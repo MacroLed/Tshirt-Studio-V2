@@ -7,7 +7,7 @@ import { searchLibrary } from '@/core/library/search';
 const CATEGORY_IDS = Object.keys(LIBRARY_CATEGORIES) as LibraryCategory[];
 
 const chipClass =
-  'cursor-pointer border border-line px-2 py-1 text-xs transition-colors duration-150 ease-studio hover:bg-ink/10 aria-pressed:bg-ink aria-pressed:text-canvas';
+  'cursor-pointer border border-line px-2.5 py-2.5 text-xs lg:px-2 lg:py-1 transition-colors duration-150 ease-studio hover:bg-ink/10 aria-pressed:bg-ink aria-pressed:text-canvas';
 
 /** Przeglądanie, wyszukiwanie i dodawanie gotowych grafik. `onAdd` zwraca komunikat błędu albo null. */
 export function LibraryPanel({
@@ -82,7 +82,7 @@ export function LibraryPanel({
           Nic nie znaleziono. Spróbuj innego słowa albo wybierz wszystkie kategorie.
         </p>
       ) : (
-        <ul className="mt-3 grid max-h-64 grid-cols-3 gap-1.5 overflow-y-auto" data-testid="library-grid">
+        <ul className="mt-3 grid grid-cols-3 gap-1.5 lg:max-h-64 lg:overflow-y-auto" data-testid="library-grid">
           {results.map((item) => (
             <li key={item.id}>
               <button

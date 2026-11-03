@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import { useStore } from 'zustand';
 import type { Product } from '@/core/catalog/schema';
 import { createWorkingCopy } from '@/core/design/commands';
+import { createId } from '@/core/design/createId';
+import { exportFileName } from '@/core/design/projectName';
 import { initialImageSize } from '@/core/design/imageRules';
 import { PLACEMENT_IDS, type DesignDocument, type ImageElement, type PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
@@ -15,18 +17,21 @@ import { PrintTextureManager } from '@/three/PrintTextureManager';
 import { WebGLGuard } from '@/three/WebGLGuard';
 import { AreaWarning } from './AreaWarning';
 import { ColorPicker } from './ColorPicker';
+import { ExportPanel } from './ExportPanel';
 import { ImageAssetLibrary, type ImageAsset } from './imageAssets';
 import { ImageUpload } from './ImageUpload';
 import { computeStatuses, STATUS_MESSAGES } from './elementStatus';
 import { FlatCanvas } from './FlatCanvas';
 import { LibraryPanel } from './LibraryPanel';
 import { PLACEMENT_LABELS } from './placementLabels';
+import { downloadBlob, renderAreaPreview } from './previewExport';
 import { PropertiesPanel } from './PropertiesPanel';
 import { renderThumbnail } from './projectThumbnail';
 import { SaveProjectDialog } from './SaveProjectDialog';
 import { SaveStatus } from './SaveStatus';
 import { hasUnsavedWork, useProjectPersistence } from './useProjectPersistence';
 import { createStudioStore, isDirty } from './studioStore';
+import type { ViewCapture } from './StudioViewport';
 import { createTextElement, readableInkColor } from './textDefaults';
 
 const StudioViewport = dynamic(() => import('./StudioViewport'), {
@@ -67,7 +72,7 @@ function ToolbarButton({
       aria-pressed={pressed}
       title={title}
       data-testid={testId}
-      className="cursor-pointer border border-line px-3 py-1.5 text-sm transition-colors duration-150 ease-studio hover:bg-ink hover:text-canvas disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink aria-pressed:bg-ink aria-pressed:text-canvas"
+      className="min-h-10 flex-1 cursor-pointer border border-line px-1 py-1.5 text-sm transition-colors sm:min-h-0 sm:flex-none sm:px-3 duration-150 ease-studio hover:bg-ink hover:text-canvas disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink aria-pressed:bg-ink aria-pressed:text-canvas"
     >
       {label}
     </button>
@@ -127,6 +132,7 @@ export default function StudioEditor({
   const [focusRequest, setFocusRequest] = useState<string | null>(null);
   const drawnPlacements = useRef<DesignDocument['placements'] | null>(null);
   const viewportHost = useRef<HTMLDivElement>(null);
+  const viewCapture = useRef<ViewCapture | null>(null);
   const [measure] = useState(() => window.document.createElement('canvas').getContext('2d'));
 
   const document: DesignDocument = useStore(store, (state) => state.history.present);
@@ -191,7 +197,7 @@ export default function StudioEditor({
       if (withModifier) {
         if (key === 'z' && !event.shiftKey) state.undo();
         else if (key === 'y' || (key === 'z' && event.shiftKey)) state.redo();
-        else if (key === 'd') state.duplicateSelected(() => crypto.randomUUID());
+        else if (key === 'd') state.duplicateSelected(createId);
         else if (key === 'a') state.selectAll();
         else return;
         event.preventDefault();
@@ -234,7 +240,7 @@ export default function StudioEditor({
   const addText = () => {
     const area = manifest.placements[active]?.printArea;
     if (!area) return;
-    const element = createTextElement(crypto.randomUUID(), area, document.fabricColor);
+    const element = createTextElement(createId(), area, document.fabricColor);
     store.getState().addElement(element);
     setFocusRequest(element.id);
     setMobilePanel((panel) => (panel === null ? panel : 'properties'));
@@ -247,7 +253,7 @@ export default function StudioEditor({
     const size = initialImageSize(area, asset.widthPx, asset.heightPx, asset.kind === 'svg');
     const element: ImageElement = {
       type: 'image',
-      id: crypto.randomUUID(),
+      id: createId(),
       name: asset.fileName,
       assetId: asset.id,
       xMm: area.widthMm / 2,
@@ -270,6 +276,18 @@ export default function StudioEditor({
     return null;
   };
 
+  const exportName = openProject?.name ?? product.name;
+  const exportArea = async () => {
+    const blob = await renderAreaPreview(textures, active, document.fabricColor);
+    if (blob) downloadBlob(blob, exportFileName(exportName, PLACEMENT_LABELS[active]));
+    return blob !== null;
+  };
+  const exportView = async () => {
+    const blob = (await viewCapture.current?.()) ?? null;
+    if (blob) downloadBlob(blob, exportFileName(exportName, 'widok 3d'));
+    return blob !== null;
+  };
+
   const panelClass = (panel: Exclude<MobilePanel, null>) =>
     `${mobilePanel === panel ? 'absolute inset-0 z-20 block pt-12' : 'hidden'} overflow-y-auto bg-canvas lg:static lg:z-auto lg:block lg:pt-0`;
 
@@ -287,16 +305,16 @@ export default function StudioEditor({
         .flatMap((placement) => placement.elements.map((element) => element.id))
         .join(',')}
     >
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-2">
-        <Link href="/" onClick={confirmLeave} className="text-sm text-muted underline-offset-4 hover:underline">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-1 sm:gap-y-2 sm:py-2">
+        <Link href="/" onClick={confirmLeave} className="py-2.5 text-sm text-muted underline-offset-4 hover:underline sm:py-0">
           ← Produkty
         </Link>
-        <Link href="/projects" onClick={confirmLeave} data-testid="projects-link" className="text-sm text-muted underline-offset-4 hover:underline">
+        <Link href="/projects" onClick={confirmLeave} data-testid="projects-link" className="py-2.5 text-sm text-muted underline-offset-4 hover:underline sm:py-0">
           Moje projekty
         </Link>
         <h1 className="font-display text-2xl leading-none">{product.name}</h1>
         <SaveStatus state={saveState} project={openProject} />
-        <div className="ml-auto flex flex-wrap items-center gap-1.5 sm:gap-2" role="toolbar" aria-label="Działania na projekcie">
+        <div className="flex w-full items-center gap-1 sm:ml-auto sm:w-auto sm:flex-wrap sm:gap-2" role="toolbar" aria-label="Działania na projekcie">
           <ToolbarButton label="Cofnij" onClick={() => store.getState().undo()} disabled={!canUndo} testId="undo" />
           <ToolbarButton label="Ponów" onClick={() => store.getState().redo()} disabled={!canRedo} testId="redo" />
           <ToolbarButton label="Resetuj" onClick={() => store.getState().reset()} disabled={!dirty} testId="reset" />
@@ -346,6 +364,9 @@ export default function StudioEditor({
             <PanelSection title="Gotowe grafiki">
               <LibraryPanel items={libraryItems} onAdd={addLibraryItem} />
             </PanelSection>
+            <PanelSection title="Pobierz podgląd">
+              <ExportPanel areaLabel={PLACEMENT_LABELS[active]} onExportArea={exportArea} onExportView={exportView} />
+            </PanelSection>
             <PanelSection title="Koszulka">
               <ul className="space-y-1 text-sm">
                 {products.map((candidate) => (
@@ -382,6 +403,7 @@ export default function StudioEditor({
                   store={store}
                   hostRef={viewportHost}
                   showGuides={!previewMode}
+                  captureRef={viewCapture}
                 />
               )}
             </WebGLGuard>
@@ -399,7 +421,7 @@ export default function StudioEditor({
                   aria-selected={selected}
                   data-testid={`placement-${placement}`}
                   onClick={() => store.getState().setActivePlacement(placement)}
-                  className="cursor-pointer px-3 py-2 text-sm transition-colors duration-150 ease-studio hover:bg-ink/10 aria-selected:bg-ink aria-selected:text-canvas"
+                  className="cursor-pointer px-3 py-2.5 text-sm transition-colors duration-150 ease-studio hover:bg-ink/10 aria-selected:bg-ink aria-selected:text-canvas sm:py-2"
                 >
                   {PLACEMENT_LABELS[placement]}
                   {count > 0 && <span className="ml-1.5 text-xs opacity-70">{count}</span>}

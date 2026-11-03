@@ -1,9 +1,11 @@
 'use client';
 
+import { createId } from '@/core/design/createId';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { MAX_PROJECT_NAME_LENGTH, normalizeProjectName } from '@/core/design/projectName';
-import { ProjectStorage, type ProjectSummary } from './projectStorage';
+import type { ProjectSummary } from '@/core/projects/repository';
+import { createProjectRepository } from './projectRepository';
 
 export type ProductLink = { id: string; slug: string; name: string };
 
@@ -46,7 +48,7 @@ function ProjectCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(project.name);
   const openable = Boolean(product) && project.readable;
-  const buttonClass = 'cursor-pointer border border-line px-2 py-1.5 text-xs hover:bg-ink hover:text-canvas';
+  const buttonClass = 'cursor-pointer border border-line px-1 py-2.5 text-xs lg:px-2 lg:py-1.5 hover:bg-ink hover:text-canvas';
 
   return (
     <li className="flex flex-col border border-line" data-testid="project-card">
@@ -124,7 +126,7 @@ function ProjectCard({
             onClick={() => {
               if (window.confirm(`Usunąć projekt „${project.name}”? Tej operacji nie można cofnąć.`)) void onDelete();
             }}
-            className="col-span-2 cursor-pointer border border-line px-2 py-1.5 text-xs hover:bg-accent hover:text-on-accent"
+            className="col-span-2 cursor-pointer border border-line px-1 py-2.5 text-xs lg:px-2 lg:py-1.5 hover:bg-accent hover:text-on-accent"
           >
             Usuń
           </button>
@@ -136,7 +138,7 @@ function ProjectCard({
 
 /** Lista „Moje projekty”. Dane są w przeglądarce, więc serwer nie może ich wyrenderować. */
 export function ProjectList({ products }: { products: ProductLink[] }) {
-  const [storage] = useState(() => new ProjectStorage());
+  const [storage] = useState(createProjectRepository);
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -193,14 +195,14 @@ export function ProjectList({ products }: { products: ProductLink[] }) {
           , zaprojektuj ją i naciśnij „Zapisz”.
         </p>
       ) : (
-        <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="projects-list">
+        <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" data-testid="projects-list">
           {projects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
               product={products.find((candidate) => candidate.id === project.productId)}
               onRename={(name) => run(() => storage.rename(project.id, name))}
-              onDuplicate={() => run(() => storage.duplicate(project.id, crypto.randomUUID()))}
+              onDuplicate={() => run(() => storage.duplicate(project.id, createId()))}
               onDelete={() => run(() => storage.remove(project.id))}
             />
           ))}

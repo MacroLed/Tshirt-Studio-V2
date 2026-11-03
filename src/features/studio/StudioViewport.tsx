@@ -2,7 +2,7 @@
 
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { NeutralToneMapping, SRGBColorSpace, Vector3, type PerspectiveCamera } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useStore } from 'zustand';
@@ -90,6 +90,48 @@ function CameraRig({
   return null;
 }
 
+const VIEW_EXPORT_WIDTH_PX = 1920;
+const MAX_EXPORT_PIXEL_RATIO = 3;
+
+export type ViewCapture = () => Promise<Blob | null>;
+
+/**
+ * Zrzut widoku 3D. Płótno WebGL nie zachowuje obrazu między klatkami, więc rysujemy klatkę
+ * i odczytujemy ją w tym samym zadaniu, z wyższą gęstością niż na ekranie. Efekt działa po efektach
+ * GarmentMesh, dlatego obrysy edytora są już wtedy wyłączone.
+ */
+function CaptureBridge({ pending, onDone }: { pending: boolean; onDone: (blob: Blob | null) => void }) {
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    if (!pending) return;
+    const source = gl.domElement;
+    const screenRatio = gl.getPixelRatio();
+    const widthCss = source.width / screenRatio;
+    gl.setPixelRatio(Math.min(MAX_EXPORT_PIXEL_RATIO, Math.max(screenRatio, VIEW_EXPORT_WIDTH_PX / widthCss)));
+    gl.render(scene, camera);
+    const output = window.document.createElement('canvas');
+    output.width = source.width;
+    output.height = source.height;
+    const context = output.getContext('2d');
+    if (context) {
+      // Tło strony: bez niego przezroczystość PNG zmieniłaby wygląd koszulki w przeglądarce zdjęć.
+      context.fillStyle = getComputedStyle(window.document.body).backgroundColor;
+      context.fillRect(0, 0, output.width, output.height);
+      context.drawImage(source, 0, 0);
+    }
+    gl.setPixelRatio(screenRatio);
+    invalidate();
+    if (context) output.toBlob(onDone, 'image/png');
+    else onDone(null);
+  }, [pending, gl, scene, camera, invalidate, onDone]);
+
+  return null;
+}
+
 /** Scena po wczytaniu fontów odświeża się sama, gdy zmieni się nadruk w teksturach. */
 function RepaintOnChange({ document }: { document: DesignDocument }) {
   const invalidate = useThree((state) => state.invalidate);
@@ -104,6 +146,7 @@ export default function StudioViewport({
   store,
   hostRef,
   showGuides,
+  captureRef,
 }: {
   manifest: GarmentManifest;
   document: DesignDocument;
@@ -112,6 +155,8 @@ export default function StudioViewport({
   hostRef: RefObject<HTMLElement | null>;
   /** W trybie podglądu koszulka wygląda jak gotowa: bez obrysów i edycji. */
   showGuides: boolean;
+  /** Tu widok udostępnia edytorowi funkcję zrzutu. */
+  captureRef: RefObject<ViewCapture | null>;
 }) {
   const active = document.editor.activePlacement;
   const selectedIds = useStore(store, (state) => state.selectedIds);
@@ -119,16 +164,35 @@ export default function StudioViewport({
   const [measure] = useState<Canvas2DLike<CanvasImageSource> | null>(() =>
     window.document.createElement('canvas').getContext('2d'),
   );
+  // Oczekujące zrzuty: na czas zrzutu znikają obrysy, bo należą do edytora, a nie do koszulki.
+  const [captureResolvers, setCaptureResolvers] = useState<((blob: Blob | null) => void)[]>([]);
+  const capturing = captureResolvers.length > 0;
+  const guides = showGuides && !capturing;
+  const finishCapture = useCallback(
+    (blob: Blob | null) =>
+      setCaptureResolvers((resolvers) => {
+        for (const resolve of resolvers) resolve(blob);
+        return [];
+      }),
+    [],
+  );
+  useEffect(() => {
+    captureRef.current = () => new Promise((resolve) => setCaptureResolvers((resolvers) => [...resolvers, resolve]));
+    return () => {
+      captureRef.current = null;
+    };
+  }, [captureRef]);
+
   const elements = document.placements[active].elements;
   const selection = useMemo(() => {
-    if (!showGuides || !measure) return null;
+    if (!guides || !measure) return null;
     // Ukrytego elementu nie ma na koszulce, więc nie ma też czego obrysować.
     const boxes = elements
       .filter((element) => selectedIds.includes(element.id) && !element.hidden)
       .map((element) => elementBox(measure, element));
     const box = boxes.length > 1 ? boundsOfBoxes(boxes) : boxes[0];
     return box ? { placement: active, box } : null;
-  }, [showGuides, elements, selectedIds, measure, active]);
+  }, [guides, elements, selectedIds, measure, active]);
   return (
     <Canvas
       shadows
@@ -146,10 +210,11 @@ export default function StudioViewport({
           fabricColor={document.fabricColor}
           pose="display"
           textures={textures}
-          activePlacement={showGuides ? active : null}
+          activePlacement={guides ? active : null}
           selection={selection}
         />
       </Suspense>
+      <CaptureBridge pending={capturing} onDone={finishCapture} />
       <RepaintOnChange document={document} />
       <OrbitControls
         makeDefault

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Product } from '@/core/catalog/schema';
+import { createId } from '@/core/design/createId';
 import type { DesignDocument } from '@/core/design/schema';
+import { draftId, type ProjectLoad, type SaveTarget } from '@/core/projects/repository';
 import type { ImageAssetLibrary } from './imageAssets';
-import { draftId, ProjectStorage, type SaveTarget } from './projectStorage';
+import { createProjectRepository } from './projectRepository';
 import { isDirty, type StudioStore } from './studioStore';
 
 const AUTOSAVE_DELAY_MS = 600;
@@ -78,7 +80,7 @@ export function useProjectPersistence({
 
   useEffect(() => {
     let cancelled = false;
-    const storage = new ProjectStorage();
+    const storage = createProjectRepository();
     let target: OpenProject | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let unsubscribe = () => {};
@@ -153,7 +155,7 @@ export function useProjectPersistence({
       },
       saveAs: async (name) => {
         clearTimeout(timer);
-        const next: OpenProject = { id: crypto.randomUUID(), name };
+        const next: OpenProject = { id: createId(), name };
         const snapshot = store.getState().history.present;
         try {
           await queue;
@@ -181,7 +183,7 @@ export function useProjectPersistence({
       },
     };
 
-    const restore = async (found: Extract<Awaited<ReturnType<ProjectStorage['load']>>, { status: 'found' }>, color: string | null) => {
+    const restore = async (found: Extract<ProjectLoad, { status: 'found' }>, color: string | null) => {
       const results = await Promise.all(
         found.assets.map((asset) => assets.importFile(new File([asset.blob], asset.fileName), asset.id)),
       );

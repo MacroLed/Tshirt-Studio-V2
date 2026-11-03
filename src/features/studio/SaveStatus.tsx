@@ -36,7 +36,7 @@ export function SaveStatus({ state, project }: { state: SaveState; project: Open
       data-state={state.kind}
       title={message && !message.problem ? `${message.text}. Projekt jest tylko na tym urządzeniu.` : undefined}
       // Problemu nie wolno uciąć: klient musi przeczytać cały komunikat. Nazwa projektu może być długa.
-      className={`text-xs ${message?.problem ? 'text-accent' : 'max-w-64 truncate text-muted'}`}
+      className={`min-h-4 w-full text-xs sm:min-h-0 sm:w-auto ${message?.problem ? 'text-accent' : 'truncate text-muted sm:max-w-64'}`}
     >
       {message?.text}
     </p>

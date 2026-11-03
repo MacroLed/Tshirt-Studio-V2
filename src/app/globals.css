@@ -54,3 +54,16 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Ekrany dotykowe: iOS powiększa stronę przy dotknięciu pola z czcionką mniejszą niż 16 px,
+ * a niskie pola trudno trafić palcem. Reguła poza warstwami ma pierwszeństwo przed klasami Tailwinda.
+ */
+@media (max-width: 1023px) {
+  input:not([type='color']):not([type='file']),
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 2.5rem;
+  }
+}

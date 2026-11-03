@@ -13,3 +13,16 @@ export function copyName(name: string): string {
   const base = name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
   return `${[...base].slice(0, MAX_PROJECT_NAME_LENGTH - suffix.length).join('').trimEnd()}${suffix}`;
 }
+
+/** Bezpieczna nazwa pobieranego pliku, bez polskich znaków i znaków zabronionych w systemach plików. */
+export function exportFileName(name: string, suffix: string): string {
+  const slug = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/ł/g, 'l')
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  return `${slug(name) || 'projekt'}-${slug(suffix)}.png`;
+}
