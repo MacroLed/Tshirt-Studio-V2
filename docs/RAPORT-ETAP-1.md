@@ -1,5 +1,7 @@
 # Raport ETAPU 1: prototyp wizualny
 
+> Dokument historyczny, stan z końca ETAPU 1. Bieżący stan: [STATUS.md](STATUS.md). `StudioStart.tsx` z tabeli zasobów już nie istnieje, a „Poza display” została zrobiona w ETAPIE 2.
+
 Stan na 2026-11-02, gałąź `etap-1`. Powtórzenie pomiarów: `npm run build && npm run perf`, kontrola na prawdziwym GPU: `npm run check:gpu`.
 
 ## Kryteria akceptacji

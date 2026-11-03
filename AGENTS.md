@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Dokumentacja projektu
+
+Przed zmianami przeczytaj `README.md`, `docs/STATUS.md` (stan i otwarte problemy) oraz `docs/PRZEWODNIK-ZMIAN.md` (zasady, przepisy, pułapki). Po ukończeniu kroku zaktualizuj `docs/STATUS.md`. Komunikacja i komentarze po polsku, identyfikatory po angielsku.
