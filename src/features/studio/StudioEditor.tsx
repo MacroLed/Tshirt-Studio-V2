@@ -22,6 +22,8 @@ import { FlatCanvas } from './FlatCanvas';
 import { LibraryPanel } from './LibraryPanel';
 import { PLACEMENT_LABELS } from './placementLabels';
 import { PropertiesPanel } from './PropertiesPanel';
+import { SaveStatus } from './SaveStatus';
+import { hasUnsavedWork, useDraftPersistence } from './useDraftPersistence';
 import { createStudioStore, isDirty } from './studioStore';
 import { createTextElement, readableInkColor } from './textDefaults';
 
@@ -36,7 +38,7 @@ const StudioViewport = dynamic(() => import('./StudioViewport'), {
 
 type MobilePanel = 'tools' | 'properties' | null;
 
-const LEAVE_WARNING = 'Projekt nie jest jeszcze zapisywany i zmiany zostaną utracone. Czy na pewno chcesz wyjść?';
+const LEAVE_WARNING = 'Ostatnie zmiany nie zostały zapisane i zostaną utracone. Czy na pewno chcesz wyjść?';
 const NUDGE_MM = 1;
 const NUDGE_FAST_MM = 10;
 
@@ -85,12 +87,15 @@ export default function StudioEditor({
   products,
   manifest,
   initialColor,
+  requestedColor,
   libraryItems,
 }: {
   product: Product;
   products: Pick<Product, 'id' | 'slug' | 'name'>[];
   manifest: GarmentManifest;
   initialColor: string;
+  /** Kolor jawnie wskazany w adresie; null, gdy klient go nie wybrał. */
+  requestedColor: string | null;
   libraryItems: LibraryItem[];
 }) {
   const [store] = useState(() => createStudioStore(createWorkingCopy(product.originalDesign, initialColor)));
@@ -98,7 +103,10 @@ export default function StudioEditor({
   const [textures] = useState(
     () => new PrintTextureManager(manifest, { resolveImage: (assetId) => assets.getImage(assetId) }),
   );
-  const [fontsReady, setFontsReady] = useState(false);
+  const saveState = useDraftPersistence({ store, assets, product, requestedColor });
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  // Rysujemy dopiero po przywróceniu szkicu: klient nie powinien zobaczyć mignięcia pustego wzoru.
+  const fontsReady = fontsLoaded && saveState.kind !== 'checking';
   const [fontError, setFontError] = useState<unknown>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null);
   const [previewMode, setPreviewMode] = useState(false);
@@ -111,6 +119,7 @@ export default function StudioEditor({
   const canUndo = useStore(store, (state) => state.history.past.length > 0);
   const canRedo = useStore(store, (state) => state.history.future.length > 0);
   const dirty = useStore(store, isDirty);
+  const unsavedWork = hasUnsavedWork(saveState, dirty);
   const active = document.editor.activePlacement;
   const placementElements = document.placements;
   const statuses = useMemo(
@@ -123,7 +132,7 @@ export default function StudioEditor({
   useEffect(() => {
     let current = true;
     loadPrintFonts().then(
-      () => current && setFontsReady(true),
+      () => current && setFontsLoaded(true),
       (error: unknown) => current && setFontError(error),
     );
     return () => {
@@ -151,11 +160,11 @@ export default function StudioEditor({
   useEffect(() => () => textures.dispose(), [textures]);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!unsavedWork) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  }, [unsavedWork]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -203,9 +212,9 @@ export default function StudioEditor({
 
   if (fontError) throw fontError;
 
-  // Bez zapisu projektu wyjście kasuje pracę, więc klient musi to potwierdzić.
+  // Wyjście przed ukończeniem zapisu kasuje ostatnie zmiany, więc klient musi to potwierdzić.
   const confirmLeave = (event: ReactMouseEvent) => {
-    if (dirty && !window.confirm(LEAVE_WARNING)) event.preventDefault();
+    if (unsavedWork && !window.confirm(LEAVE_WARNING)) event.preventDefault();
   };
 
   const addText = () => {
@@ -258,6 +267,8 @@ export default function StudioEditor({
       data-garment={manifest.garmentVersionId}
       data-fabric-color={document.fabricColor.toLowerCase()}
       data-active-placement={active}
+      // Do czasu przywrócenia szkicu edycja jest zablokowana, bo szkic nadpisałby nowe zmiany.
+      inert={saveState.kind === 'checking'}
       data-design-elements={Object.values(document.placements)
         .flatMap((placement) => placement.elements.map((element) => element.id))
         .join(',')}
@@ -267,6 +278,7 @@ export default function StudioEditor({
           ← Produkty
         </Link>
         <h1 className="font-display text-2xl leading-none">{product.name}</h1>
+        <SaveStatus state={saveState} />
         <div className="ml-auto flex flex-wrap items-center gap-1.5 sm:gap-2" role="toolbar" aria-label="Działania na projekcie">
           <ToolbarButton label="Cofnij" onClick={() => store.getState().undo()} disabled={!canUndo} testId="undo" />
           <ToolbarButton label="Ponów" onClick={() => store.getState().redo()} disabled={!canRedo} testId="redo" />
@@ -279,7 +291,7 @@ export default function StudioEditor({
           />
           {/* Oznaczone jako niedostępne, dopóki nie powstaną odpowiednie etapy. */}
           <span className="hidden gap-2 sm:flex">
-            <ToolbarButton label="Zapisz" disabled title="Dostępne po dodaniu kont (ETAP 4)" />
+            <ToolbarButton label="Zapisz" disabled title="Na razie projekt zapisuje się sam w tej przeglądarce. Zapis pod nazwą pojawi się wkrótce." />
             <ToolbarButton label="Do koszyka" disabled title="Dostępne po uruchomieniu sklepu (ETAP 5)" />
           </span>
         </div>

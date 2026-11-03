@@ -34,6 +34,7 @@ export default async function StudioPage({ params, searchParams }: StudioPagePro
       products={products.map(({ id, slug: productSlug, name }) => ({ id, slug: productSlug, name }))}
       manifest={manifest}
       initialColor={requested?.hex ?? product.originalDesign.fabricColor}
+      requestedColor={requested?.hex ?? null}
       libraryItems={libraryItems}
     />
   );

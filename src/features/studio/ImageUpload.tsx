@@ -66,7 +66,7 @@ export function ImageUpload({ library, onAdded }: { library: ImageAssetLibrary; 
         </p>
       )}
       <p className="mt-2 text-xs text-muted">
-        PNG, SVG, JPEG lub WebP, do 25 MB. Obrazy nie są jeszcze zapisywane: znikną po odświeżeniu strony.
+        PNG, SVG, JPEG lub WebP, do 25 MB. Pliki zostają w tej przeglądarce i nie są nigdzie wysyłane.
       </p>
     </div>
   );

@@ -97,10 +97,13 @@ test.describe('edytor: układ i obszary', () => {
     await expect(page.getByTestId('flat-canvas')).toBeVisible();
     await expect(page.getByRole('tablist', { name: 'Obszar edycji' }).getByRole('tab')).toHaveCount(4);
     // Niedziałające jeszcze funkcje muszą być wyłączone i opisane, a nie udawać, że działają.
-    for (const name of ['Zapisz', 'Do koszyka']) {
+    for (const [name, description] of [
+      ['Zapisz', /przeglądarce/],
+      ['Do koszyka', /ETAP/],
+    ] as const) {
       const button = page.getByRole('button', { name, exact: true });
       await expect(button).toBeDisabled();
-      await expect(button).toHaveAttribute('title', /ETAP/);
+      await expect(button).toHaveAttribute('title', description);
     }
     expect(errors, errors.join('\n')).toEqual([]);
   });
@@ -387,8 +390,13 @@ test.describe('edytor: tekst', () => {
 
   test('wyjście z niezapisanym projektem wymaga potwierdzenia', async ({ page }, testInfo) => {
     desktopOnly(testInfo.project.name);
+    // Zapis się nie udaje, więc zmiany pozostają niezapisane niezależnie od szybkości testu.
+    await page.addInitScript(() => {
+      IDBObjectStore.prototype.put = () => {
+        throw new Error('brak miejsca');
+      };
+    });
     await open(page, '/studio/atelier');
-    // Bez zmian wychodzi się bez pytania, więc najpierw test właściwego przypadku.
     await page.getByTestId('add-text').click();
     await page.getByTestId('text-content').blur();
     const messages: string[] = [];

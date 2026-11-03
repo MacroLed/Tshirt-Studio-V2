@@ -51,6 +51,8 @@ export interface StudioState {
   undo(): void;
   redo(): void;
   reset(): void;
+  /** Otwiera zapisany projekt: historia zaczyna się od niego, a przycisk resetu nadal wraca do wzoru. */
+  restore(document: DesignDocument): void;
 }
 
 export type StudioStore = StoreApi<StudioState>;
@@ -169,6 +171,7 @@ export function createStudioStore(initial: DesignDocument): StudioStore {
       setElementHidden: (elementId, hidden) => apply(updateElement(present(), active(), elementId, { hidden })),
       setElementLocked: (elementId, locked) => apply(updateElement(present(), active(), elementId, { locked })),
       moveLayer: (elementId, direction) => apply(moveLayer(present(), active(), elementId, direction)),
+      restore: (document) => set({ history: createHistory(document), gestureStart: null, ...selectionOf([]) }),
       undo: () =>
         set((state) => {
           const next = undo(state.history);

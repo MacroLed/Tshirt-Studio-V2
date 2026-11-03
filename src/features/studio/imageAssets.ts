@@ -14,6 +14,8 @@ export interface ImageAsset {
   widthPx: number;
   heightPx: number;
   image: HTMLImageElement;
+  /** Zawartość po walidacji; z niej powstaje zapis projektu. */
+  blob: Blob;
 }
 
 export type ImportResult = { ok: true; asset: ImageAsset } | { ok: false; error: string };
@@ -174,6 +176,7 @@ export class ImageAssetLibrary {
       widthPx: image.naturalWidth,
       heightPx: image.naturalHeight,
       image,
+      blob,
     };
     this.assets.set(asset.id, asset);
     return { ok: true, asset };
