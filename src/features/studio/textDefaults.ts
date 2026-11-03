@@ -12,6 +12,11 @@ function isLightColor(hex: string): boolean {
   return 0.299 * r + 0.587 * g + 0.114 * b > 140;
 }
 
+/** Kolor nadruku czytelny na podanej tkaninie. */
+export function readableInkColor(fabricColor: string): string {
+  return isLightColor(fabricColor) ? DARK_INK : LIGHT_INK;
+}
+
 /** Nowy tekst na środku obszaru, w rozmiarze dopasowanym do pola i kolorze czytelnym na tkaninie. */
 export function createTextElement(id: string, area: PrintArea, fabricColor: string): TextElement {
   return {
@@ -28,7 +33,7 @@ export function createTextElement(id: string, area: PrintArea, fabricColor: stri
     fontId: 'hanken-grotesk',
     fontSizeMm: Math.round(Math.min(area.widthMm, area.heightMm) * 0.12),
     fontWeight: 700,
-    color: isLightColor(fabricColor) ? DARK_INK : LIGHT_INK,
+    color: readableInkColor(fabricColor),
     align: 'center',
     scale: 1,
   };

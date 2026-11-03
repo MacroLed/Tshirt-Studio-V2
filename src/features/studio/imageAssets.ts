@@ -4,6 +4,8 @@ import {
   MAX_FILE_BYTES,
   type ImageKind,
 } from '@/core/design/imageRules';
+import type { LibraryItem } from '@/core/library/schema';
+import { applyInkColor, libraryAssetId } from '@/core/library/search';
 
 export interface ImageAsset {
   id: string;
@@ -105,7 +107,25 @@ export class ImageAssetLibrary {
     return this.assets.get(assetId)?.image ?? null;
   }
 
-  async importFile(file: File): Promise<ImportResult> {
+  /**
+   * Grafika z biblioteki w wybranym kolorze. Przechodzi tę samą walidację co pliki użytkownika,
+   * a raz wczytana jest używana ponownie.
+   */
+  async importLibraryItem(item: LibraryItem, inkHex: string): Promise<ImportResult> {
+    const id = libraryAssetId(item.id, inkHex);
+    const existing = this.assets.get(id);
+    if (existing) return { ok: true, asset: existing };
+    try {
+      const response = await fetch(item.path);
+      if (!response.ok) throw new Error(String(response.status));
+      const svg = applyInkColor(await response.text(), inkHex);
+      return await this.importFile(new File([svg], item.name, { type: 'image/svg+xml' }), id);
+    } catch {
+      return { ok: false, error: `Nie udało się pobrać grafiki „${item.name}”. Sprawdź połączenie i spróbuj ponownie.` };
+    }
+  }
+
+  async importFile(file: File, id: string = crypto.randomUUID()): Promise<ImportResult> {
     if (file.size > MAX_FILE_BYTES) {
       const megabytes = Math.round(MAX_FILE_BYTES / (1024 * 1024));
       return { ok: false, error: `Plik „${file.name}” jest za duży. Maksymalny rozmiar to ${megabytes} MB.` };
@@ -148,7 +168,7 @@ export class ImageAssetLibrary {
     }
 
     const asset: ImageAsset = {
-      id: crypto.randomUUID(),
+      id,
       fileName: file.name,
       kind,
       widthPx: image.naturalWidth,

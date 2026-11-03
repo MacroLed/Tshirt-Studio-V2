@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "garment:inspect": "node assets-src/garments/inspect_glb.mjs",
+    "library": "node scripts/library/generate.mjs",
     "posters": "node scripts/posters/generate.mjs",
     "perf": "node scripts/perf/measure.mjs",
     "check:gpu": "node scripts/perf/check-gpu.mjs",

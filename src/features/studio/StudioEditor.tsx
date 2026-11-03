@@ -9,6 +9,7 @@ import { createWorkingCopy } from '@/core/design/commands';
 import { initialImageSize } from '@/core/design/imageRules';
 import { PLACEMENT_IDS, type DesignDocument, type ImageElement, type PlacementId } from '@/core/design/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
+import type { LibraryItem } from '@/core/library/schema';
 import { loadPrintFonts } from '@/three/printFonts';
 import { PrintTextureManager } from '@/three/PrintTextureManager';
 import { WebGLGuard } from '@/three/WebGLGuard';
@@ -18,10 +19,11 @@ import { ImageAssetLibrary, type ImageAsset } from './imageAssets';
 import { ImageUpload } from './ImageUpload';
 import { computeStatuses, STATUS_MESSAGES } from './elementStatus';
 import { FlatCanvas } from './FlatCanvas';
+import { LibraryPanel } from './LibraryPanel';
 import { PLACEMENT_LABELS } from './placementLabels';
 import { PropertiesPanel } from './PropertiesPanel';
 import { createStudioStore, isDirty } from './studioStore';
-import { createTextElement } from './textDefaults';
+import { createTextElement, readableInkColor } from './textDefaults';
 
 const StudioViewport = dynamic(() => import('./StudioViewport'), {
   ssr: false,
@@ -83,11 +85,13 @@ export default function StudioEditor({
   products,
   manifest,
   initialColor,
+  libraryItems,
 }: {
   product: Product;
   products: Pick<Product, 'id' | 'slug' | 'name'>[];
   manifest: GarmentManifest;
   initialColor: string;
+  libraryItems: LibraryItem[];
 }) {
   const [store] = useState(() => createStudioStore(createWorkingCopy(product.originalDesign, initialColor)));
   const [assets] = useState(() => new ImageAssetLibrary());
@@ -214,7 +218,8 @@ export default function StudioEditor({
   };
 
   const addImage = (asset: ImageAsset) => {
-    const area = manifest.placements[active]?.printArea;
+    // Wczytywanie trwa, a w tym czasie klient mógł zmienić obszar: liczy się ten aktualny.
+    const area = manifest.placements[store.getState().history.present.editor.activePlacement]?.printArea;
     if (!area) return;
     const size = initialImageSize(area, asset.widthPx, asset.heightPx, asset.kind === 'svg');
     const element: ImageElement = {
@@ -232,6 +237,14 @@ export default function StudioEditor({
     };
     store.getState().addElement(element);
     setMobilePanel((panel) => (panel === null ? panel : 'properties'));
+  };
+
+  const addLibraryItem = async (item: LibraryItem) => {
+    const { fabricColor } = store.getState().history.present;
+    const result = await assets.importLibraryItem(item, readableInkColor(fabricColor));
+    if (!result.ok) return result.error;
+    addImage(result.asset);
+    return null;
   };
 
   const panelClass = (panel: Exclude<MobilePanel, null>) =>
@@ -294,6 +307,9 @@ export default function StudioEditor({
             </PanelSection>
             <PanelSection>
               <ColorPicker colors={product.colors} value={document.fabricColor} onChange={setColor} />
+            </PanelSection>
+            <PanelSection title="Gotowe grafiki">
+              <LibraryPanel items={libraryItems} onAdd={addLibraryItem} />
             </PanelSection>
             <PanelSection title="Koszulka">
               <ul className="space-y-1 text-sm">

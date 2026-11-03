@@ -285,7 +285,7 @@ Kwoty jako liczby całkowite w groszach. RLS włączony na każdej tabeli.
 - oświadczenie o prawach do wgrywanych grafik i moderacja,
 - RODO,
 - VAT/OSS przy sprzedaży do UE,
-- licencje fontów (tylko OFL) i grafik z biblioteki.
+- licencje fontów (tylko OFL) i grafik z biblioteki. Startowe grafiki (`scripts/library/generate.mjs`) są oryginalnym dziełem projektu; każda pozycja ma pole `license`. Ogólne znaki z kategorii Logo nie są rejestrowane ani sprawdzane pod kątem podobieństwa do znaków towarowych: przed sprzedażą warto to ocenić.
 
 ---
 
