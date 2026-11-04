@@ -4,9 +4,12 @@ import { Suspense, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { NeutralToneMapping, SRGBColorSpace } from 'three';
 import { catalogSchema, type Product } from '@/core/catalog/schema';
+import { toPublishedTemplate } from '@/core/templates/repository';
+import { rackManifestSchema } from '@/core/templates/schema';
 import { catalogSeed } from '@/data/catalog.seed';
 import { garmentsSeed } from '@/data/garments.seed';
 import RackCanvas from '@/features/rack/RackCanvas';
+import { BLANK_PRODUCT_SLUG, toBlankRackItem, toRackItem } from '@/features/rack/rackItem';
 import { GarmentMesh } from '@/three/GarmentMesh';
 import { loadPrintFonts } from '@/three/printFonts';
 import { StudioLights } from '@/three/StudioLights';
@@ -58,7 +61,7 @@ declare global {
   interface Window {
     posterSlugs: string[];
     renderProductPoster: (slug: string) => Promise<void>;
-    renderRackPoster: () => Promise<void>;
+    renderRackPoster: (rawManifest: unknown, publicBase: string) => Promise<void>;
   }
 }
 
@@ -71,13 +74,24 @@ window.renderProductPoster = async (slug) => {
   await new Promise<void>((resolve) => mount(<ProductPoster key={slug} product={product} onReady={resolve} />));
 };
 
-window.renderRackPoster = () =>
+window.renderRackPoster = (rawManifest, publicBase) =>
   new Promise<void>((resolve) => {
-    const fabricColors = Object.fromEntries(products.map((p) => [p.slug, p.originalDesign.fabricColor]));
+    const blank = products.find((product) => product.slug === BLANK_PRODUCT_SLUG);
+    if (!blank) throw new Error(`Katalog nie ma czystej koszulki ${BLANK_PRODUCT_SLUG}`);
+    // Taka sama kolejność jak na stronie głównej: czysta koszulka i gotowe wzory.
+    const items = [
+      toBlankRackItem(blank),
+      ...rackManifestSchema.parse(rawManifest).templates.map((template) => {
+        const product = products.find((candidate) => candidate.id === template.productId);
+        if (!product) throw new Error(`Szablon ${template.id} wskazuje nieznany produkt ${template.productId}`);
+        return toRackItem(toPublishedTemplate(template, publicBase), product);
+      }),
+    ];
+    const fabricColors = Object.fromEntries(items.map((item) => [item.id, item.design.fabricColor]));
     mount(
       <div style={{ width: '100vw', height: '100vh' }}>
         <RackCanvas
-          products={products}
+          items={items}
           manifests={manifests}
           fabricColors={fabricColors}
           selectedIndex={null}

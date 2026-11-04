@@ -36,6 +36,8 @@ interface GarmentMeshProps {
    * bez tej właściwości koszulka ma własne, jak na wieszaku.
    */
   textures?: PrintTextureManager;
+  /** Gotowe nadruki: koszulka rysuje je zamiast składać projekt z dokumentu. */
+  prints?: Partial<Record<PlacementId, CanvasImageSource>>;
   /** Obszar edytowany w edytorze: jego pole nadruku dostaje obrys. */
   activePlacement?: PlacementId | null;
   /** Zaznaczony element: jego obrys jest rysowany na tkaninie. */
@@ -99,6 +101,7 @@ export function GarmentMesh({
   wave,
   pose = 'hanging',
   textures: sharedTextures,
+  prints,
   activePlacement = null,
   selection = null,
 }: GarmentMeshProps) {
@@ -166,12 +169,17 @@ export function GarmentMesh({
 
   useEffect(() => {
     if (!ownTextures) return;
-    const report = ownTextures.update(design);
-    if (report.missingAssetIds.length > 0 || report.unknownFontIds.length > 0) {
-      console.error('Projekt ma brakujące zasoby', report);
+    if (prints) {
+      const missing = ownTextures.drawPrints(prints);
+      if (missing.length > 0) console.error('Projekt nie ma gotowych nadruków', missing);
+    } else {
+      const report = ownTextures.update(design);
+      if (report.missingAssetIds.length > 0 || report.unknownFontIds.length > 0) {
+        console.error('Projekt ma brakujące zasoby', report);
+      }
     }
     invalidate();
-  }, [design, ownTextures, invalidate]);
+  }, [design, prints, ownTextures, invalidate]);
 
   useEffect(() => {
     outlines.setActive(activePlacement);

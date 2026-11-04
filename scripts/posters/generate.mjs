@@ -1,6 +1,8 @@
-// Generuje plakaty z prawdziwej sceny 3D: public/posters/<slug>.webp oraz rack-*.webp.
+// Generuje plakaty z prawdziwej sceny 3D: public/posters/<slug>.webp oraz rack-*.webp przy szablonach wieszaka.
 // Uruchomienie: npm run posters (po zmianie wzorów, kolorów lub modelu).
-import { mkdirSync, readFileSync, statSync } from 'node:fs';
+// Tylko stojak, np. po zmianie zawartości wieszaka: npm run posters -- --rack-only
+// Inny katalog wieszaka: zmienna RACK_TEMPLATES_DIR, tak jak w aplikacji.
+import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 import { buildSync } from 'esbuild';
@@ -9,6 +11,10 @@ import sharp from 'sharp';
 const ORIGIN = 'http://posters.local';
 const PUBLIC_DIR = path.resolve('public');
 const OUT_DIR = path.join(PUBLIC_DIR, 'posters');
+const RACK_DIRECTORY = process.env.RACK_TEMPLATES_DIR ?? 'templates';
+const RACK_DIR = path.join(PUBLIC_DIR, RACK_DIRECTORY);
+const RACK_MANIFEST = path.join(RACK_DIR, 'rack.json');
+const RACK_ONLY = process.argv.includes('--rack-only');
 const MIME = { '.glb': 'model/gltf-binary', '.webp': 'image/webp', '.ttf': 'font/ttf', '.txt': 'text/plain' };
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -76,30 +82,37 @@ async function assertFramed(buffer, name, { minCoverage, checkEdges }) {
   return coverage;
 }
 
-async function save(page, name, quality, checks) {
+async function save(page, outDir, name, quality, checks) {
   const buffer = await page.screenshot({ omitBackground: true, timeout: 60000 });
   const coverage = await assertFramed(buffer, name, checks);
-  const file = path.join(OUT_DIR, `${name}.webp`);
+  const file = path.join(outDir, `${name}.webp`);
   await sharp(buffer).webp({ quality, alphaQuality: 90 }).toFile(file);
   console.log(`${name}.webp: ${(statSync(file).size / 1024).toFixed(0)} KB, pokrycie ${(coverage * 100).toFixed(0)}%`);
 }
 
-const { page: productPage, problems: productProblems } = await openPage({ width: 640, height: 640 });
-const slugs = await productPage.evaluate(() => window.posterSlugs);
-for (const slug of slugs) {
-  await productPage.evaluate((s) => window.renderProductPoster(s), slug);
-  await save(productPage, slug, 82, { minCoverage: 0.25, checkEdges: true });
+const problems = [];
+if (!RACK_ONLY) {
+  const { page: productPage, problems: productProblems } = await openPage({ width: 640, height: 640 });
+  const slugs = await productPage.evaluate(() => window.posterSlugs);
+  for (const slug of slugs) {
+    await productPage.evaluate((s) => window.renderProductPoster(s), slug);
+    await save(productPage, OUT_DIR, slug, 82, { minCoverage: 0.25, checkEdges: true });
+  }
+  await productPage.close();
+  problems.push(...productProblems);
 }
-await productPage.close();
 
-const problems = [...productProblems];
+// Czysta koszulka wisi zawsze, więc także bez `rack.json` powstają plakaty stojaka.
+mkdirSync(RACK_DIR, { recursive: true });
+const rackManifest = existsSync(RACK_MANIFEST) ? JSON.parse(readFileSync(RACK_MANIFEST, 'utf8')) : { version: 1, templates: [] };
 for (const [name, viewport] of [
   ['rack-desktop', { width: 1920, height: 1080 }],
   ['rack-mobile', { width: 780, height: 1688 }],
 ]) {
   const { page, problems: pageProblems } = await openPage(viewport);
-  await page.evaluate(() => window.renderRackPoster());
-  await save(page, name, 80, { minCoverage: 0.1, checkEdges: false });
+  await page.evaluate(([raw, base]) => window.renderRackPoster(raw, base), [rackManifest, `/${RACK_DIRECTORY}`]);
+  // Sama czysta koszulka zajmuje mało kadru, więc próg pokrycia musi to dopuszczać.
+  await save(page, RACK_DIR, name, 80, { minCoverage: 0.03, checkEdges: false });
   problems.push(...pageProblems);
   await page.close();
 }

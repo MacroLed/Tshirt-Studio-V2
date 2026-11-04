@@ -16,6 +16,7 @@
     "garment:inspect": "node assets-src/garments/inspect_glb.mjs",
     "library": "node scripts/library/generate.mjs",
     "posters": "node scripts/posters/generate.mjs",
+    "rack:fixture": "node scripts/rack/fixture.mjs",
     "perf": "node scripts/perf/measure.mjs",
     "check:gpu": "node scripts/perf/check-gpu.mjs",
     "check:placements": "node scripts/perf/check-placements.mjs"

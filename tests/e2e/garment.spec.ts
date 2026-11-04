@@ -187,8 +187,8 @@ test.describe('strona podglądu', () => {
   test('lista produktów prowadzi do podglądu', async ({ page }) => {
     await disableWebGL(page);
     await page.goto('/');
-    await page.getByRole('region', { name: 'Lista produktów' }).getByRole('link', { name: 'Atelier' }).click();
-    await expect(page).toHaveURL(/\/studio\/atelier$/);
-    await expect(page.getByRole('heading', { name: 'Atelier' })).toBeVisible();
+    await page.getByRole('region', { name: 'Lista produktów' }).getByRole('link', { name: 'Blanc' }).click();
+    await expect(page).toHaveURL(/\/studio\/blanc$/);
+    await expect(page.getByRole('heading', { name: 'Blanc' })).toBeVisible();
   });
 });

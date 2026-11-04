@@ -109,6 +109,25 @@ export class PrintTextureManager {
   }
 
   /**
+   * Rysuje gotowe nadruki zamiast składać je z dokumentu, np. na stojaku, gdzie oryginalne pliki
+   * i fonty byłyby tylko zbędnym pobieraniem. Zwraca obszary, dla których zabrakło obrazu.
+   */
+  drawPrints(prints: Partial<Record<PlacementId, CanvasImageSource>>): PlacementId[] {
+    const missing: PlacementId[] = [];
+    for (const [placementId, slot] of this.slots) {
+      const image = prints[placementId];
+      if (!image) {
+        missing.push(placementId);
+        continue;
+      }
+      slot.context.clearRect(0, 0, slot.canvas.width, slot.canvas.height);
+      slot.context.drawImage(image, 0, 0, slot.canvas.width, slot.canvas.height);
+      slot.texture.needsUpdate = true;
+    }
+    return missing;
+  }
+
+  /**
    * Zwalnia pamięć GPU. Płótna zostają: React w trybie deweloperskim wywołuje sprzątanie
    * i ponowne uruchomienie efektów, a tekstura sama załaduje się przy kolejnym użyciu.
    */

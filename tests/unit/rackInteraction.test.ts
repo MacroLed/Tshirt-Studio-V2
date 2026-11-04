@@ -128,6 +128,85 @@ describe('kliknięcie: zdjęcie ze stojaka', () => {
   });
 });
 
+describe('oglądanie zdjętej koszulki', () => {
+  it('obraca tylko wybraną koszulkę i się zatrzymuje', () => {
+    const interaction = new RackInteraction(8);
+    interaction.setSelected(2);
+    interaction.rotateViewBy(1, 0.2);
+    settle(interaction);
+    expect(interaction.pose(2).viewYaw).toBeCloseTo(1, 2);
+    expect(interaction.pose(2).viewPitch).toBeCloseTo(0.2, 2);
+    expect(interaction.pose(3).viewYaw).toBe(0);
+    expect(interaction.step(1 / 60)).toBe(false);
+  });
+
+  it('bez wyboru nie ma czego obracać ani przybliżać', () => {
+    const interaction = new RackInteraction(8);
+    interaction.rotateViewBy(1, 1);
+    interaction.zoomViewBy(-0.5);
+    settle(interaction);
+    expect(interaction.pose(0).viewYaw).toBe(0);
+    expect(interaction.viewZoom).toBe(1);
+    expect(interaction.viewTarget).toEqual({ yaw: 0, pitch: 0 });
+  });
+
+  it('pozwala na wiele pełnych obrotów, ale pochylenie ma granice', () => {
+    const interaction = new RackInteraction(8);
+    interaction.setSelected(0);
+    interaction.rotateViewBy(Math.PI * 5, 5);
+    settle(interaction);
+    expect(interaction.pose(0).viewYaw).toBeCloseTo(Math.PI * 5, 1);
+    expect(interaction.pose(0).viewPitch).toBeCloseTo(Math.PI / 3, 2);
+    interaction.rotateViewBy(0, -10);
+    expect(interaction.viewTarget.pitch).toBeCloseTo(-Math.PI / 3, 5);
+  });
+
+  it('przybliżanie ma granice', () => {
+    const interaction = new RackInteraction(8);
+    interaction.setSelected(0);
+    interaction.zoomViewBy(-5);
+    settle(interaction);
+    expect(interaction.viewZoom).toBeCloseTo(0.35, 2);
+    interaction.zoomViewBy(5);
+    settle(interaction);
+    expect(interaction.viewZoom).toBeCloseTo(1.3, 2);
+  });
+
+  it('po odwieszeniu koszulka wraca najkrótszą drogą, bez odkręcania obrotów', () => {
+    const interaction = new RackInteraction(8);
+    interaction.setSelected(0);
+    interaction.rotateViewBy(Math.PI * 4 + 0.5, 0.3);
+    interaction.zoomViewBy(-0.3);
+    settle(interaction);
+    interaction.setSelected(null);
+    interaction.step(1 / 60);
+    expect(Math.abs(interaction.pose(0).viewYaw)).toBeLessThan(Math.PI);
+    settle(interaction);
+    expect(interaction.pose(0).viewYaw).toBeCloseTo(0, 2);
+    expect(interaction.pose(0).viewPitch).toBeCloseTo(0, 2);
+    expect(interaction.viewZoom).toBeCloseTo(1, 2);
+  });
+
+  it('kolejna wybrana koszulka zaczyna od przodu', () => {
+    const interaction = new RackInteraction(8);
+    interaction.setSelected(0);
+    interaction.rotateViewBy(1, 0.3);
+    interaction.setSelected(1);
+    expect(interaction.viewTarget).toEqual({ yaw: 0, pitch: 0 });
+    settle(interaction);
+    expect(interaction.pose(0).viewYaw).toBeCloseTo(0, 2);
+  });
+
+  it('przy ograniczonym ruchu obrót następuje od razu', () => {
+    const interaction = new RackInteraction(8, () => true);
+    interaction.setSelected(0);
+    interaction.rotateViewBy(1, 0.2);
+    expect(interaction.step(1 / 60)).toBe(false);
+    expect(interaction.pose(0).viewYaw).toBe(1);
+    expect(interaction.pose(0).viewPitch).toBe(0.2);
+  });
+});
+
 describe('odporność', () => {
   it('długa przerwa w renderowaniu nie rozsypuje animacji', () => {
     const interaction = new RackInteraction(8);

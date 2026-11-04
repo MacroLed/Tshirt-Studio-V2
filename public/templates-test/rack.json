@@ -1,0 +1,429 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "atelier",
+      "productId": "prod_atelier",
+      "name": "Atelier",
+      "description": "Oszczędny napis szeryfowy na piersi, na złamanej bieli.",
+      "document": {
+        "schemaVersion": 1,
+        "productId": "prod_atelier",
+        "garmentVersionId": "regular-v1",
+        "fabricColor": "#EDEAE3",
+        "placements": {
+          "front": {
+            "elements": [
+              {
+                "id": "t1",
+                "name": "Atelier",
+                "xMm": 175,
+                "yMm": 90,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "Atelier",
+                "fontId": "instrument-serif",
+                "fontSizeMm": 34,
+                "fontWeight": 400,
+                "color": "#1A1917",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "back": {
+            "elements": []
+          },
+          "sleeve_left": {
+            "elements": []
+          },
+          "sleeve_right": {
+            "elements": []
+          }
+        },
+        "editor": {
+          "activePlacement": "front"
+        }
+      },
+      "prints": {
+        "front": "print-front.webp"
+      },
+      "thumbnail": "thumbnail.webp"
+    },
+    {
+      "id": "nocturne",
+      "productId": "prod_nocturne",
+      "name": "Nocturne",
+      "description": "Duży, jasny tytuł na grafitowej dzianinie.",
+      "document": {
+        "schemaVersion": 1,
+        "productId": "prod_nocturne",
+        "garmentVersionId": "regular-v1",
+        "fabricColor": "#2B2B2E",
+        "placements": {
+          "front": {
+            "elements": [
+              {
+                "id": "t1",
+                "name": "Nocturne",
+                "xMm": 175,
+                "yMm": 190,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "Nocturne",
+                "fontId": "instrument-serif",
+                "fontSizeMm": 62,
+                "fontWeight": 400,
+                "color": "#EDEAE3",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "back": {
+            "elements": []
+          },
+          "sleeve_left": {
+            "elements": []
+          },
+          "sleeve_right": {
+            "elements": []
+          }
+        },
+        "editor": {
+          "activePlacement": "front"
+        }
+      },
+      "prints": {
+        "front": "print-front.webp"
+      },
+      "thumbnail": "thumbnail.webp"
+    },
+    {
+      "id": "las",
+      "productId": "prod_las",
+      "name": "Las",
+      "description": "Krótki napis na butelkowej zieleni z numerem na plecach.",
+      "document": {
+        "schemaVersion": 1,
+        "productId": "prod_las",
+        "garmentVersionId": "regular-v1",
+        "fabricColor": "#23483A",
+        "placements": {
+          "front": {
+            "elements": [
+              {
+                "id": "t1",
+                "name": "Las",
+                "xMm": 175,
+                "yMm": 110,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "Las",
+                "fontId": "instrument-serif",
+                "fontSizeMm": 70,
+                "fontWeight": 400,
+                "color": "#C9B999",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "back": {
+            "elements": [
+              {
+                "id": "t2",
+                "name": "No. 07",
+                "xMm": 175,
+                "yMm": 60,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "No. 07",
+                "fontId": "instrument-serif",
+                "fontSizeMm": 20,
+                "fontWeight": 400,
+                "color": "#C9B999",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "sleeve_left": {
+            "elements": []
+          },
+          "sleeve_right": {
+            "elements": []
+          }
+        },
+        "editor": {
+          "activePlacement": "front"
+        }
+      },
+      "prints": {
+        "front": "print-front.webp",
+        "back": "print-back.webp"
+      },
+      "thumbnail": "thumbnail.webp"
+    },
+    {
+      "id": "rouge",
+      "productId": "prod_rouge",
+      "name": "Rouge",
+      "description": "Bordowa baza i napis ustawiony pod kątem.",
+      "document": {
+        "schemaVersion": 1,
+        "productId": "prod_rouge",
+        "garmentVersionId": "regular-v1",
+        "fabricColor": "#5C1F1C",
+        "placements": {
+          "front": {
+            "elements": [
+              {
+                "id": "t1",
+                "name": "Rouge",
+                "xMm": 175,
+                "yMm": 210,
+                "rotationDeg": -8,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "Rouge",
+                "fontId": "instrument-serif",
+                "fontSizeMm": 90,
+                "fontWeight": 400,
+                "color": "#EDEAE3",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "back": {
+            "elements": []
+          },
+          "sleeve_left": {
+            "elements": []
+          },
+          "sleeve_right": {
+            "elements": []
+          }
+        },
+        "editor": {
+          "activePlacement": "front"
+        }
+      },
+      "prints": {
+        "front": "print-front.webp"
+      },
+      "thumbnail": "thumbnail.webp"
+    },
+    {
+      "id": "marine",
+      "productId": "prod_marine",
+      "name": "Marine",
+      "description": "Granat z ciężką typografią bezszeryfową i akcentem na rękawie.",
+      "document": {
+        "schemaVersion": 1,
+        "productId": "prod_marine",
+        "garmentVersionId": "regular-v1",
+        "fabricColor": "#1E2A44",
+        "placements": {
+          "front": {
+            "elements": [
+              {
+                "id": "t1",
+                "name": "MARINE",
+                "xMm": 175,
+                "yMm": 150,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "MARINE",
+                "fontId": "hanken-grotesk",
+                "fontSizeMm": 48,
+                "fontWeight": 800,
+                "color": "#EDEAE3",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "back": {
+            "elements": []
+          },
+          "sleeve_left": {
+            "elements": [
+              {
+                "id": "t2",
+                "name": "23",
+                "xMm": 50,
+                "yMm": 50,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "23",
+                "fontId": "hanken-grotesk",
+                "fontSizeMm": 30,
+                "fontWeight": 800,
+                "color": "#EDEAE3",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "sleeve_right": {
+            "elements": []
+          }
+        },
+        "editor": {
+          "activePlacement": "front"
+        }
+      },
+      "prints": {
+        "front": "print-front.webp",
+        "sleeve_left": "print-sleeve_left.webp"
+      },
+      "thumbnail": "thumbnail.webp"
+    },
+    {
+      "id": "dune",
+      "productId": "prod_dune",
+      "name": "Dune",
+      "description": "Ciepły piasek i kontrastowy napis na plecach.",
+      "document": {
+        "schemaVersion": 1,
+        "productId": "prod_dune",
+        "garmentVersionId": "regular-v1",
+        "fabricColor": "#C9B999",
+        "placements": {
+          "front": {
+            "elements": [
+              {
+                "id": "t1",
+                "name": "Dune",
+                "xMm": 175,
+                "yMm": 80,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "Dune",
+                "fontId": "instrument-serif",
+                "fontSizeMm": 26,
+                "fontWeight": 400,
+                "color": "#23483A",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "back": {
+            "elements": [
+              {
+                "id": "t2",
+                "name": "Dune",
+                "xMm": 175,
+                "yMm": 200,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "Dune",
+                "fontId": "instrument-serif",
+                "fontSizeMm": 100,
+                "fontWeight": 400,
+                "color": "#23483A",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "sleeve_left": {
+            "elements": []
+          },
+          "sleeve_right": {
+            "elements": []
+          }
+        },
+        "editor": {
+          "activePlacement": "front"
+        }
+      },
+      "prints": {
+        "front": "print-front.webp",
+        "back": "print-back.webp"
+      },
+      "thumbnail": "thumbnail.webp"
+    },
+    {
+      "id": "studio",
+      "productId": "prod_studio",
+      "name": "Studio",
+      "description": "Czysty, bezszeryfowy podpis na grafitowej bazie.",
+      "document": {
+        "schemaVersion": 1,
+        "productId": "prod_studio",
+        "garmentVersionId": "regular-v1",
+        "fabricColor": "#2B2B2E",
+        "placements": {
+          "front": {
+            "elements": [
+              {
+                "id": "t1",
+                "name": "studio",
+                "xMm": 175,
+                "yMm": 85,
+                "rotationDeg": 0,
+                "opacity": 1,
+                "hidden": false,
+                "locked": false,
+                "type": "text",
+                "content": "studio",
+                "fontId": "hanken-grotesk",
+                "fontSizeMm": 22,
+                "fontWeight": 500,
+                "color": "#EDEAE3",
+                "align": "center",
+                "scale": 1
+              }
+            ]
+          },
+          "back": {
+            "elements": []
+          },
+          "sleeve_left": {
+            "elements": []
+          },
+          "sleeve_right": {
+            "elements": []
+          }
+        },
+        "editor": {
+          "activePlacement": "front"
+        }
+      },
+      "prints": {
+        "front": "print-front.webp"
+      },
+      "thumbnail": "thumbnail.webp"
+    }
+  ]
+}

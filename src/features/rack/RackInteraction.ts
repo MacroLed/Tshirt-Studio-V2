@@ -36,6 +36,14 @@ const SWAY_PER_SLIDE_SPEED = 0.16;
 const WAVE_PER_SPEED = 0.012;
 const MAX_WAVE_M = 0.012;
 
+/** Krytycznie tłumione: obrót nadąża za palcem i łagodnie wyhamowuje, bez odbicia. */
+const VIEW: SpringParams = { stiffness: 120, damping: 22 };
+const MAX_VIEW_PITCH_RAD = Math.PI / 3;
+/** Mnożnik odległości kamery od wybranej koszulki: mniej to bliżej. */
+const MIN_VIEW_ZOOM = 0.35;
+const MAX_VIEW_ZOOM = 1.3;
+const FULL_TURN = Math.PI * 2;
+
 export interface ShirtPose {
   /** Dodatkowy kąt położenia na obręczy. */
   slideRadians: number;
@@ -49,6 +57,10 @@ export interface ShirtPose {
   takeOff: number;
   /** Wielkość fali na tkaninie w metrach. */
   wave: number;
+  /** Obrót nadany przez oglądającego wokół osi pionowej. */
+  viewYaw: number;
+  /** Pochylenie nadane przez oglądającego, ograniczone, żeby nie stanąć do góry nogami. */
+  viewPitch: number;
 }
 
 function stepSpring(spring: Spring, target: number, params: SpringParams, dt: number): void {
@@ -75,6 +87,12 @@ export class RackInteraction {
   private readonly pull: Spring[];
   private readonly slide: Spring[];
   private readonly takeOff: Spring[];
+  private readonly viewYaw: Spring[];
+  private readonly viewPitch: Spring[];
+  private readonly viewYawTarget: number[];
+  private readonly viewPitchTarget: number[];
+  private readonly viewZoomSpring: Spring = { x: 1, v: 0 };
+  private viewZoomTarget = 1;
 
   constructor(
     private readonly count: number,
@@ -84,6 +102,10 @@ export class RackInteraction {
     this.pull = create();
     this.slide = create();
     this.takeOff = create();
+    this.viewYaw = create();
+    this.viewPitch = create();
+    this.viewYawTarget = Array.from({ length: count }, () => 0);
+    this.viewPitchTarget = Array.from({ length: count }, () => 0);
   }
 
   setHovered(index: number | null): void {
@@ -92,8 +114,42 @@ export class RackInteraction {
 
   /** Wybór kończy wychylenie: koszulka przechodzi od razu do zdejmowania ze stojaka. */
   setSelected(index: number | null): void {
+    if (this.selected !== null && this.selected !== index) this.resetView(this.selected);
     this.selected = index;
     if (index !== null) this.hovered = null;
+  }
+
+  /** Koszulka wraca na wieszak przodem i najkrótszą drogą, nawet po kilku pełnych obrotach. */
+  private resetView(index: number): void {
+    const yaw = this.viewYaw[index]!;
+    yaw.x -= Math.round(yaw.x / FULL_TURN) * FULL_TURN;
+    this.viewYawTarget[index] = 0;
+    this.viewPitchTarget[index] = 0;
+    this.viewZoomTarget = 1;
+  }
+
+  /** Obraca wybraną koszulkę; bez wyboru nie ma czego obracać. */
+  rotateViewBy(yawRadians: number, pitchRadians: number): void {
+    if (this.selected === null) return;
+    this.viewYawTarget[this.selected]! += yawRadians;
+    const pitch = this.viewPitchTarget[this.selected]! + pitchRadians;
+    this.viewPitchTarget[this.selected] = Math.min(MAX_VIEW_PITCH_RAD, Math.max(-MAX_VIEW_PITCH_RAD, pitch));
+  }
+
+  zoomViewBy(delta: number): void {
+    if (this.selected === null) return;
+    this.viewZoomTarget = Math.min(MAX_VIEW_ZOOM, Math.max(MIN_VIEW_ZOOM, this.viewZoomTarget + delta));
+  }
+
+  /** Mnożnik odległości kamery od wybranej koszulki. */
+  get viewZoom(): number {
+    return this.viewZoomSpring.x;
+  }
+
+  /** Docelowy obrót wybranej koszulki, czyli to, o co poprosił oglądający. */
+  get viewTarget(): { yaw: number; pitch: number } {
+    if (this.selected === null) return { yaw: 0, pitch: 0 };
+    return { yaw: this.viewYawTarget[this.selected]!, pitch: this.viewPitchTarget[this.selected]! };
   }
 
   /** Postęp zdejmowania wybranej koszulki, na potrzeby ruchu kamery. */
@@ -132,7 +188,11 @@ export class RackInteraction {
         this.pull[index] = { x: this.pullTarget(index), v: 0 };
         this.slide[index] = { x: this.slideTarget(index), v: 0 };
         this.takeOff[index] = { x: this.takeOffTarget(index), v: 0 };
+        this.viewYaw[index] = { x: this.viewYawTarget[index]!, v: 0 };
+        this.viewPitch[index] = { x: this.viewPitchTarget[index]!, v: 0 };
       }
+      this.viewZoomSpring.x = this.viewZoomTarget;
+      this.viewZoomSpring.v = 0;
       return false;
     }
     const frame = Math.min(rawDelta, MAX_FRAME_SECONDS);
@@ -141,19 +201,24 @@ export class RackInteraction {
         stepSpring(this.pull[index]!, this.pullTarget(index), PULL, SUBSTEP);
         stepSpring(this.slide[index]!, this.slideTarget(index), SLIDE, SUBSTEP);
         stepSpring(this.takeOff[index]!, this.takeOffTarget(index), TAKE_OFF, SUBSTEP);
+        stepSpring(this.viewYaw[index]!, this.viewYawTarget[index]!, VIEW, SUBSTEP);
+        stepSpring(this.viewPitch[index]!, this.viewPitchTarget[index]!, VIEW, SUBSTEP);
       }
+      stepSpring(this.viewZoomSpring, this.viewZoomTarget, VIEW, SUBSTEP);
     }
     this.time += frame;
     for (let index = 0; index < this.count; index += 1) {
       if (
         !isAtRest(this.pull[index]!, this.pullTarget(index)) ||
         !isAtRest(this.slide[index]!, this.slideTarget(index)) ||
-        !isAtRest(this.takeOff[index]!, this.takeOffTarget(index))
+        !isAtRest(this.takeOff[index]!, this.takeOffTarget(index)) ||
+        !isAtRest(this.viewYaw[index]!, this.viewYawTarget[index]!) ||
+        !isAtRest(this.viewPitch[index]!, this.viewPitchTarget[index]!)
       ) {
         return true;
       }
     }
-    return false;
+    return !isAtRest(this.viewZoomSpring, this.viewZoomTarget);
   }
 
   pose(index: number): ShirtPose {
@@ -169,6 +234,8 @@ export class RackInteraction {
       faceCamera: Math.min(1, MAX_FACE_CAMERA * Math.max(0, pull.x) + off),
       takeOff: off,
       wave: Math.min(MAX_WAVE_M, speed * WAVE_PER_SPEED),
+      viewYaw: this.viewYaw[index]!.x,
+      viewPitch: this.viewPitch[index]!.x,
     };
   }
 }

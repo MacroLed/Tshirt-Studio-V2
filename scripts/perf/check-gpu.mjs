@@ -54,6 +54,15 @@ await page.mouse.move(640, 360);
 await page.mouse.click(640, 360);
 await page.getByTestId('product-panel').waitFor({ timeout: 15000 });
 await page.waitForTimeout(1500);
+// Obracanie zdjętej koszulki: nowy nadruk nie powstaje, ale rysowanie pozostaje ciągłe.
+await page.mouse.move(450, 360);
+await page.mouse.down();
+for (let i = 0; i < 60; i += 1) {
+  await page.mouse.move(450 + Math.sin(i / 6) * 220, 360 + Math.cos(i / 9) * 90);
+  await page.waitForTimeout(16);
+}
+await page.mouse.up();
+await page.waitForTimeout(800);
 await page.keyboard.press('Escape');
 await page.waitForTimeout(1000);
 for (let i = 0; i < 10; i += 1) await page.getByRole('button', { name: 'Następna koszulka' }).click();

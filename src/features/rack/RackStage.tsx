@@ -1,17 +1,20 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { Product } from '@/core/catalog/schema';
 import type { GarmentManifest } from '@/core/garment/manifest';
 import { formatPrice } from '@/core/pricing/formatPrice';
 import { useWebGLSupported, WebGLGuard } from '@/three/WebGLGuard';
 import { ProductPanel } from './ProductPanel';
 import type { RackControls } from './RackCanvas';
+import type { RackItem } from './rackItem';
 
 const RackCanvas = dynamic(() => import('./RackCanvas'), { ssr: false });
 
 const POSTER_FADE_CLASS = 'transition-opacity duration-500 ease-studio';
+const STAGE_BACKGROUND = 'radial-gradient(ellipse at 50% 42%, #d3d0c8 0%, #c4c1b9 62%, #b4b1a9 100%)';
 
 function ControlButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
@@ -27,6 +30,56 @@ function ControlButton({ label, onClick, children }: { label: string; onClick: (
   );
 }
 
+/** Wyróżnia jedyną koszulkę, którą można zaprojektować po swojemu, na tle gotowych wzorów. */
+function PersonalizeBadge({ testId }: { testId: string }) {
+  return (
+    <span
+      data-testid={testId}
+      className="inline-flex items-center gap-1.5 whitespace-nowrap bg-accent px-2.5 py-1 text-sm font-semibold text-on-accent"
+    >
+      <span aria-hidden="true">✎</span>
+      Do personalizacji
+    </span>
+  );
+}
+
+/** Koszulki z wieszaka dla urządzeń bez WebGL: inaczej nie miałyby jak do nich dotrzeć. */
+function RackItemList({ items }: { items: RackItem[] }) {
+  return (
+    <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+      {items.map((item) => (
+        <li key={item.id} className="border border-line bg-canvas p-3" data-testid="rack-item-card">
+          <div className="grid aspect-square place-items-center">
+            {item.thumbnail ? (
+              // Miniatury są już w docelowym formacie i rozmiarze, więc nie wymagają przetwarzania.
+              <Image
+                src={item.thumbnail}
+                alt={`Koszulka ${item.name}`}
+                width={640}
+                height={640}
+                unoptimized
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs text-muted">Brak podglądu</span>
+            )}
+          </div>
+          <h2 className="mt-3 font-display text-2xl leading-tight">
+            {item.personalizable ? (
+              <Link href={`/studio/${item.productSlug}`} className="underline-offset-4 hover:underline">
+                {item.name}
+              </Link>
+            ) : (
+              item.name
+            )}
+          </h2>
+          <p className="mt-1 text-sm font-medium">{formatPrice(item.basePriceMinor, item.currency)}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Tryb oszczędzania danych: scena 3D startuje dopiero na wyraźną prośbę. */
 function prefersSavingData(): boolean {
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
@@ -35,12 +88,15 @@ function prefersSavingData(): boolean {
 
 /** Pierwszy ekran strony: plakat od razu, a wieszak 3D z elementami sterowania, gdy będzie gotowy. */
 export function RackStage({
-  products,
+  items,
   manifests,
+  posterBase,
   children,
 }: {
-  products: Product[];
+  items: RackItem[];
   manifests: Record<string, GarmentManifest>;
+  /** Katalog z plakatami stojaka: leżą przy szablonach, które przedstawiają. */
+  posterBase: string;
   /** Nagłówek strony, rysowany nad sceną. */
   children: ReactNode;
 }) {
@@ -56,12 +112,12 @@ export function RackStage({
   const [sceneReady, setSceneReady] = useState(false);
   const [colorChoices, setColorChoices] = useState<Record<string, string>>({});
   const webGLSupported = useWebGLSupported();
-  const focused = products[focusedIndex] ?? products[0];
-  const hovered = hoveredIndex === null ? null : products[hoveredIndex];
-  const selected = selectedIndex === null ? null : products[selectedIndex];
+  const focused = items[focusedIndex] ?? items[0];
+  const hovered = hoveredIndex === null ? null : items[hoveredIndex];
+  const selected = selectedIndex === null ? null : items[selectedIndex];
   // Podpis opisuje koszulkę pod kursorem, a bez niej tę z pierwszego planu.
   const captionIndex = hoveredIndex ?? focusedIndex;
-  const caption = products[captionIndex] ?? focused;
+  const caption = items[captionIndex] ?? focused;
 
   // Scena ładuje się dopiero, gdy przeglądarka skończy pierwsze rysowanie strony.
   useEffect(() => {
@@ -79,11 +135,11 @@ export function RackStage({
 
   const fabricColors = useMemo(() => {
     const colors: Record<string, string> = {};
-    for (const product of products) {
-      colors[product.slug] = colorChoices[product.slug] ?? product.originalDesign.fabricColor;
+    for (const item of items) {
+      colors[item.id] = colorChoices[item.id] ?? item.design.fabricColor;
     }
     return colors;
-  }, [products, colorChoices]);
+  }, [items, colorChoices]);
 
   const handleHover = useCallback((index: number | null, clientX: number, clientY: number) => {
     setHoveredIndex(index);
@@ -91,14 +147,15 @@ export function RackStage({
   }, []);
   const handleReady = useCallback(() => setSceneReady(true), []);
 
-  // Bez sceny 3D nie ma czym sterować: zostaje nagłówek, a lista produktów jest tuż pod nim.
+  // Bez sceny 3D nie ma czym sterować: zostaje nagłówek i lista koszulek z wieszaka.
   if (!webGLSupported || sceneFailed) {
     return (
       <section aria-label="Nagłówek" className="p-4 sm:p-8">
         {children}
         <p className="mt-4 text-sm text-muted" role="status">
-          To urządzenie nie obsługuje podglądu 3D. Wszystkie koszulki znajdziesz poniżej.
+          To urządzenie nie obsługuje podglądu 3D. Koszulki z wieszaka znajdziesz poniżej.
         </p>
+        <RackItemList items={items} />
       </section>
     );
   }
@@ -108,9 +165,9 @@ export function RackStage({
       aria-label="Wieszak z koszulkami"
       data-testid="rack-stage"
       data-scene-ready={sceneReady}
-      data-focused={focused?.slug}
-      data-hovered={hovered?.slug ?? ''}
-      data-selected={selected?.slug ?? ''}
+      data-focused={focused?.id}
+      data-hovered={hovered?.id ?? ''}
+      data-selected={selected?.id ?? ''}
       tabIndex={0}
       onKeyDown={(event) => {
         if (!sceneReady) return;
@@ -127,15 +184,15 @@ export function RackStage({
       className={`relative h-dvh min-h-[34rem] overflow-hidden transition-opacity duration-300 ease-studio focus-visible:outline-offset-[-4px] ${
         leaving ? 'opacity-0' : 'opacity-100'
       }`}
-      style={{ background: 'radial-gradient(ellipse at 50% 42%, #d3d0c8 0%, #c4c1b9 62%, #b4b1a9 100%)' }}
+      style={{ background: STAGE_BACKGROUND }}
     >
       {/* Render tej samej sceny: pierwszy widok bez pobierania modeli, także bez JavaScriptu. */}
       <picture
         data-testid="rack-poster"
         className={`pointer-events-none absolute inset-0 ${POSTER_FADE_CLASS} ${sceneReady ? 'opacity-0' : 'opacity-100'}`}
       >
-        <source media="(orientation: portrait)" srcSet="/posters/rack-mobile.webp" />
-        <img src="/posters/rack-desktop.webp" alt="" fetchPriority="high" className="h-full w-full object-cover" />
+        <source media="(orientation: portrait)" srcSet={`${posterBase}/rack-mobile.webp`} />
+        <img src={`${posterBase}/rack-desktop.webp`} alt="" fetchPriority="high" className="h-full w-full object-cover" />
       </picture>
 
       {sceneRequested && (
@@ -145,7 +202,7 @@ export function RackStage({
         >
           <WebGLGuard fallback={null} onFailure={() => setSceneFailed(true)}>
             <RackCanvas
-              products={products}
+              items={items}
               manifests={manifests}
               fabricColors={fabricColors}
               selectedIndex={selectedIndex}
@@ -181,12 +238,21 @@ export function RackStage({
         {hovered && (
           <span className="ml-2 text-xs opacity-80">{formatPrice(hovered.basePriceMinor, hovered.currency)}</span>
         )}
+        {hovered?.personalizable && (
+          <span className="mt-2 block">
+            <PersonalizeBadge testId="rack-tooltip-personalize" />
+          </span>
+        )}
       </div>
 
       {caption && !selected && (
         <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-4 p-4 sm:p-8">
           <div className="min-w-0" aria-live="polite" data-testid="rack-caption">
-            <p className="text-eyebrow uppercase tracking-eyebrow text-muted">{caption.category}</p>
+            {caption.personalizable ? (
+              <PersonalizeBadge testId="rack-caption-personalize" />
+            ) : (
+              <p className="text-eyebrow uppercase tracking-eyebrow text-muted">{caption.category}</p>
+            )}
             <p className="mt-1 font-display text-4xl leading-none sm:text-5xl">
               {sceneReady ? (
                 <button
@@ -242,13 +308,14 @@ export function RackStage({
         </div>
       )}
 
-      {selected && fabricColors[selected.slug] && (
+      {selected && fabricColors[selected.id] && (
         <ProductPanel
-          product={selected}
-          fabricColor={fabricColors[selected.slug]!}
-          onColorChange={(hex) => setColorChoices((choices) => ({ ...choices, [selected.slug]: hex }))}
+          item={selected}
+          fabricColor={fabricColors[selected.id]!}
+          onColorChange={(hex) => setColorChoices((choices) => ({ ...choices, [selected.id]: hex }))}
           onClose={() => setSelectedIndex(null)}
           onLeave={() => setLeaving(true)}
+          onRotate={(radians) => controls.current?.rotateView(radians)}
         />
       )}
     </section>

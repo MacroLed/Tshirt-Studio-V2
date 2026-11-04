@@ -2,7 +2,7 @@
 
 Platforma do projektowania i sprzedaży koszulek, zbudowana wokół doświadczenia 3D: wieszak jako strona główna i pełnoekranowy edytor 3D z płótnem 2D.
 
-**Obecny stan:** działa wieszak, edytor, biblioteka grafik oraz zapis projektów w przeglądarce. Nie ma jeszcze kont, sklepu, płatności ani panelu administratora. Szczegóły: [docs/STATUS.md](docs/STATUS.md).
+**Obecny stan:** działa wieszak z czystą koszulką do personalizacji i gotowymi wzorami do oglądania, edytor, biblioteka grafik, zapis projektów w przeglądarce oraz testowy panel wieszaka. Nie ma jeszcze kont, sklepu, płatności ani panelu administratora dla wdrożonej strony. Szczegóły: [docs/STATUS.md](docs/STATUS.md).
 
 ## Uruchomienie
 
@@ -17,6 +17,7 @@ npm run dev
 | Komputer | `http://localhost:3000` |
 | Edytor | `http://localhost:3000/studio/blanc` |
 | Moje projekty | `http://localhost:3000/projects` |
+| Panel wieszaka (tylko `npm run dev`) | `http://localhost:3000/rack-manager` |
 | Telefon w tym samym Wi-Fi | `http://<adres-IP-komputera>:3000`. Na liście `allowedDevOrigins` są adresy tego komputera. Może blokować zapora |
 
 Wymagania: Node.js z `.nvmrc` (24) do produkcji i CI. Lokalnie sprawdzane też na Node 25. Konfiguracja nie jest potrzebna: `.env.example` dotyczy dopiero przyszłych kont.
@@ -31,14 +32,21 @@ Wymagania: Node.js z `.nvmrc` (24) do produkcji i CI. Lokalnie sprawdzane też n
 | `npm run lint` | ESLint, w tym granice warstw |
 | `npm test` | Testy jednostkowe (Vitest) |
 | `npm run test:e2e` | Testy przeglądarkowe (Playwright, własny serwer na porcie 3100, ok. 18 min) |
-| `npm run check:gpu -- http://localhost:3000` | Płynność i utrata kontekstu na **prawdziwej karcie**. Wymaga działającego `npm run dev` |
+| `npm run check:gpu -- http://localhost:3000` | Płynność i utrata kontekstu na **prawdziwej karcie**. Wymaga działającego `npm run dev`. Porównywalne pomiary daje testowy wieszak (`$env:RACK_TEMPLATES_DIR='templates-test'; npm run dev`) |
 | `npm run check:placements` | Przełączanie zakładek obszarów na prawdziwej karcie |
 | `npm run perf` | Pomiary ładowania i płynności wieszaka |
-| `npm run posters` | Plakaty produktów z prawdziwej sceny (`public/posters`) |
+| `npm run posters` | Plakaty produktów (`public/posters`) i stojaka (`public/templates`) z prawdziwej sceny. Sam stojak: `npm run posters -- --rack-only` |
+| `npm run rack:fixture` | Odtwarza testowy wieszak (`public/templates-test`) |
 | `npm run library` | Generuje grafiki biblioteki (`public/library`) |
 | `npm run garment:inspect -- <plik.glb>` | Sprawdza kontrakt pliku GLB |
 
 Przed uznaniem zmiany za gotową uruchom: `typecheck`, `lint`, `test`, `test:e2e`, a przy zmianach w 3D także `check:gpu`.
+
+## Wieszak
+
+Na stojaku zawsze wisi czysta koszulka z przyciskiem „Personalizuj”, a za nią gotowe wzory. Wzory można obracać, przybliżać i zmieniać im kolor materiału, ale nie można ich edytować.
+
+Żeby zmienić wieszak, uruchom `npm run dev` i otwórz `/rack-manager`. Panel widzi projekty zapisane w tej samej przeglądarce i pod tym samym adresem. Pozwala dodawać je na wieszak, aktualizować, zdejmować, zmieniać kolejność i tworzyć nowe projekty. Żeby zmiany zobaczyli inni: `npm run posters -- --rack-only`, commit `public/templates` i wdrożenie. Wszystko w tym katalogu będzie publiczne, więc obejrzyj go przed commitem.
 
 ## Dokumentacja
 

@@ -88,22 +88,23 @@ Wersje sprawdzone w npm 2026-11-02.
 
 ```
 assets-src/garments/         skrypty Blendera, wykroje JSON, optymalizacja GLB
-scripts/                     library, posters, perf
-public/                      models, fonts, library, posters
+scripts/                     library, posters, rack (testowy wieszak), perf
+public/                      models, fonts, library, posters, templates (wieszak), templates-test (wieszak testów)
 src/
-  app/                       /, /studio/[slug], /projects
+  app/                       /, /studio/[slug], /projects, /rack-manager i /api/dev/rack (tylko next dev)
   features/
-    rack/                    scena wieszaka, układ, interakcje, panel produktu
-    studio/                  edytor, zapis, biblioteka w panelu, lista projektów, eksport podglądu
+    rack/                    scena wieszaka, układ, interakcje, oglądanie koszulki, panel produktu
+    studio/                  edytor, zapis, biblioteka w panelu, lista projektów, eksport podglądu, panel wieszaka
   core/
     design/                  schemat, komendy, historia, geometria, migracje, zasady plików
     compositor/              renderPlacement, układ tekstu, CanvasLike, fonty
     garment/                 GarmentManifest, mapowanie mm <-> px <-> UV
     catalog/ library/        schematy danych i kontrakty repozytoriów
+    templates/               format rack.json, operacje na wieszaku, RackTemplateRepository
     projects/ account/       kontrakt zapisu, tożsamość i role
     pricing/                 formatowanie cen
   data/                      TYMCZASOWE dane: katalog, modele, biblioteka
-  server/                    repozytoria statyczne, auth (na razie zawsze odmawia)
+  server/                    repozytoria statyczne, auth (na razie zawsze odmawia), templates (odczyt i zapis wieszaka)
   three/                     GarmentMesh, fabricMaterial, PrintTextureManager, światło, WebGLGuard
   ui/                        PrototypeNotice
 tests/                       unit, e2e, helpers
@@ -116,6 +117,7 @@ tests/                       unit, e2e, helpers
 - **Wieszak:** `RackStage` (plakat, sterowanie, DOM) → `RackCanvas` (leniwie, bez SSR) → `RackScene` → `RackFrame`, `HangerInstances`, `RackFloorShadow`, koszulki `GarmentMesh`, `StudioLights`. Do tego `ProductPanel` i `RackFallback` z listą renderowaną na serwerze.
 - **Edytor:** `StudioEditor` (układ w jednym komponencie: pasek, panele, zakładki) → `ImageUpload`, `ColorPicker`, `LibraryPanel`, `ExportPanel`, `StudioViewport` (`GarmentMesh`, `ViewportDrag`, `CaptureBridge`), `FlatCanvas` (`SelectionOverlay`), `AreaWarning`, `PropertiesPanel`, `SaveStatus`, `SaveProjectDialog`.
 - **Projekty:** `ProjectList` na `/projects`.
+- **Panel wieszaka:** `RackManager` na `/rack-manager` → `publishTemplate` → `/api/dev/rack` → `rackPublisher`. Tylko w `next dev`.
 
 ---
 
@@ -125,15 +127,15 @@ tests/                       unit, e2e, helpers
 
 | Aspekt | Rozwiązanie |
 |---|---|
-| Dane | `CatalogRepository`: w ETAPIE 1 statyczny JSON (oznaczony jako tymczasowy), później Supabase. Scena nie zawiera żadnych produktów na stałe |
+| Dane | Czysta koszulka z `CatalogRepository` i gotowe wzory z `RackTemplateRepository` (dziś `public/templates/rack.json`, później baza). Scena nie zawiera żadnych produktów na stałe |
 | Geometria | Wspólna dla wszystkich koszulek, osobne materiały. Stojak i wieszaki generowane w kodzie, bo promień zależy od liczby produktów, a dodanie koszulki nie może wymagać Blendera. Kształt wieszaka jest ten sam co w symulacji tkaniny. Wieszaki przez instancing |
-| Wzór produktu | `original_design` to zwykły `DesignDocument`, renderowany tym samym kompozytorem |
-| Tożsamość po wyborze | Edytor startuje z kopią tego dokumentu, więc wzór, kolor i krój zostają bez dodatkowej logiki |
-| Hover | Raycast na lekkich bryłach pomocniczych (nie po 30 tys. trójkątów na każdy ruch myszy). Ruch jak od ręki w sklepie: koszulka wychyla się na haku i obraca do kamery, sąsiedzi rozsuwają się po obręczy, wszystko na sprężynach. Etykieta w DOM. Na dotyku pierwsze dotknięcie |
-| Kliknięcie | Koszulka zdejmowana ze stojaka przed kamerę, panel produktu, „Personalizuj”, przejście do `/studio` z płynnym przenikaniem |
+| Wzór na stojaku | Gotowy nadruk WebP (1024 px), narysowany raz przy publikacji tym samym kompozytorem. Trafia na płótno `PrintTextureManager`, więc konfiguracja tekstury jest ta sama, a zmiana koloru natychmiastowa. Stojak nie pobiera fontów ani oryginalnych plików, a te nie są publikowane |
+| Edycja | Tylko czysta koszulka prowadzi do edytora, z produktem i kolorem. Gotowe wzory można wyłącznie oglądać i zmieniać im kolor materiału: decyzja właściciela z 2026-11-04 |
+| Hover | Raycast na lekkich bryłach pomocniczych (nie po 30 tys. trójkątów na każdy ruch myszy). Ruch jak od ręki w sklepie: koszulka wychyla się na haku i obraca do kamery, sąsiedzi rozsuwają się po obręczy, wszystko na sprężynach. Etykieta w DOM, a czysta koszulka ma w niej wyraźny znacznik „Do personalizacji”. Na dotyku pierwsze dotknięcie |
+| Kliknięcie | Koszulka zdejmowana ze stojaka przed kamerę i panel produktu. Przeciąganie ją obraca, a kółko lub dwa palce przybliżają. Gotowy wzór pozwala zmienić tylko kolor materiału. Czysta koszulka ma też „Personalizuj” i przejście do `/studio` z płynnym przenikaniem |
 | Światło | Własne softboxy (`Lightformer`), bez pobierania HDRI z zewnętrznego CDN; miękkie cienie |
 | Szybki start | Strona i lista produktów renderowane na serwerze z obrazem-plakatem; scena 3D ładuje się leniwie i płynnie go zastępuje |
-| Brak WebGL | `RackFallback`: siatka produktów, w pełni użyteczna. Obsługa utraty kontekstu GPU |
+| Brak WebGL | Lista koszulek z wieszaka z miniaturami (link do edytora tylko przy czystej) i `RackFallback` z czystą koszulką. Obsługa utraty kontekstu GPU |
 
 ---
 

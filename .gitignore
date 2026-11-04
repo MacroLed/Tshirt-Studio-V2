@@ -17,6 +17,7 @@ assets-src/garments/out/
 # Testy
 playwright-report/
 test-results/
+public/templates-e2e/
 
 # Sekrety i środowisko
 .env

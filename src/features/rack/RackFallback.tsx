@@ -9,7 +9,8 @@ import { formatPrice } from '@/core/pricing/formatPrice';
  */
 export function RackFallback({ products }: { products: Product[] }) {
   return (
-    <ul className="grid grid-cols-2 gap-px bg-line md:grid-cols-4">
+    // Tło siatki rysuje linie między kartami; przy niepełnym rzędzie byłoby widać je jako szary blok.
+    <ul className={`grid grid-cols-2 gap-px md:grid-cols-4 ${products.length % 4 === 0 ? 'bg-line' : ''}`}>
       {products.map((product) => (
         <li key={product.id} className="flex flex-col bg-canvas p-4 sm:p-6" data-testid="product-card">
           <div className="aspect-square">

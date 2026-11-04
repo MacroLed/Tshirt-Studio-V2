@@ -20,6 +20,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run build && npm run start -- -p 3100',
+    // Testy mają własny wieszak, żeby nie zależeć od tego, co właściciel właśnie na nim powiesił.
+    env: { RACK_TEMPLATES_DIR: 'templates-test' },
     url: 'http://localhost:3100',
     reuseExistingServer: true,
     timeout: 180_000,

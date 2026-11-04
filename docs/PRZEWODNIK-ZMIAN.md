@@ -24,11 +24,11 @@ Jak bezpiecznie modyfikować projekt: które pliki ruszyć, w jakiej kolejności
 
 ```
 assets-src/garments/   Blender: wykrój JSON -> symulacja -> GLB, optymalizacja (out/ jest ignorowane)
-scripts/               library (grafiki), posters (plakaty), perf (pomiary na prawdziwej karcie)
-public/                models, fonts, library, posters
+scripts/               library (grafiki), posters (plakaty), rack (testowy wieszak), perf (pomiary na prawdziwej karcie)
+public/                models, fonts, library, posters, templates (wieszak), templates-test (wieszak testów e2e)
 tests/unit/            Vitest; tests/e2e/ Playwright; tests/helpers/ płótno serwerowe, brak WebGL
 src/
-  app/                 trasy: / , /studio/[slug], /projects
+  app/                 trasy: / , /studio/[slug], /projects, /rack-manager i /api/dev/rack (tylko next dev)
   core/                czysty TypeScript, bez Reacta i three
     design/            schema, commands, history, geometry, groupTransform, imageRules, migrate, projectName, createId
     compositor/        renderPlacement, textLayout, elementBounds, fontCatalog
@@ -36,13 +36,14 @@ src/
     catalog/           schemat produktu, CatalogRepository
     library/           schemat grafiki, wyszukiwanie, kolor
     projects/          ProjectRepository: kontrakt zapisu
+    templates/         szablony na wieszaku: format rack.json, operacje, RackTemplateRepository
     account/           CurrentUser, role, assertRole
     pricing/           formatPrice
   data/                TYMCZASOWE dane: katalog, modele, biblioteka
-  server/              repozytoria statyczne, auth (na razie zawsze odmawia)
+  server/              repozytoria statyczne, auth (na razie zawsze odmawia), templates: odczyt i zapis wieszaka
   three/               GarmentMesh, fabricMaterial (shader), PrintTextureManager, światło, WebGLGuard, kamera
-  features/rack/       scena wieszaka: układ, ruch, interakcje, panel produktu, plakat
-  features/studio/     edytor: store, panele, płótno, uchwyty, 3D, zapis, eksport
+  features/rack/       scena wieszaka: układ, ruch, interakcje, oglądanie koszulki, panel produktu, plakat
+  features/studio/     edytor: store, panele, płótno, uchwyty, 3D, zapis, eksport, panel wieszaka
   ui/                  PrototypeNotice
 ```
 
@@ -75,18 +76,39 @@ akcja użytkownika
 | `indexedDbProjectRepository.ts`, `projectRepository.ts` | Implementacja zapisu i jedyne miejsce jej wyboru |
 | `ProjectList.tsx`, `SaveProjectDialog.tsx`, `SaveStatus.tsx` | Interfejs projektów |
 | `ExportPanel.tsx`, `previewExport.ts` | Pobieranie podglądu |
+| `RackManager.tsx`, `publishTemplate.ts` | Panel wieszaka i rysowanie nadruków z zapisanego projektu |
 
 ## 3. Przepisy
 
 Po każdym przepisie uruchom testy z rozdziału 5.
 
-### Produkt lub koszulka na wieszaku
+### Produkt
 
 1. Dodaj wpis w `data/catalog.seed.ts`: `slug`, nazwa, cena w groszach, kolory, wzór w `originalDesign`.
 2. Kolor wzoru musi być na liście kolorów produktu, a `garmentVersionId` musi istnieć. Sprawdza to schemat (`core/catalog/schema.ts`) i `catalog.test`.
 3. Uruchom `npm run posters`.
 
-Wieszak sam dobiera promień do liczby koszulek (`rackLayout.ts`). Testy `rack.spec` i `catalog.test` mogą zakładać obecną liczbę produktów (8).
+Produkt nie pojawia się sam na stronie głównej. Lista pod wieszakiem pokazuje tylko `BLANK_PRODUCT_SLUG` (`features/rack/rackItem.ts`), a pozostałe produkty są w katalogu, bo korzystają z nich zapisane projekty i adresy `/studio/...`. **Nie usuwaj ich z katalogu**: projekty przestałyby się otwierać.
+
+### Koszulka na wieszaku
+
+Na stojaku wisi zawsze czysta koszulka (`toBlankRackItem`, produkt `blanc`, poza `rack.json`), a za nią gotowe wzory z `public/templates/rack.json`. **Tylko czystą koszulkę można otworzyć w edytorze** (`RackItem.personalizable`). Gotowe wzory można obracać, przybliżać i zmieniać im kolor materiału.
+
+Szablon to migawka projektu: dokument, gotowe nadruki WebP (`RACK_PRINT_PX`) i miniatura, bez oryginalnych plików. Format: `core/templates/schema.ts`, operacje: `core/templates/rackManifest.ts`, odczyt: `server/templates/`. Błędny plik przerywa działanie strony, tak jak błędny katalog. Brak pliku oznacza samą czystą koszulkę.
+
+Obrót zdjętej koszulki liczy `RackInteraction` (`viewYaw`, `viewPitch`, `viewZoom`), a `RackCanvas` nakłada go na grupę `swing`. Obraca się koszulka, a nie kamera, żeby w kadrze nie kręcił się cały stojak. Kolejność XYZ w `swing` daje pochylenie względem kamery także po obrocie, jak orbitowanie w edytorze, a przesunięcie `swing.position` trzyma środek koszulki w miejscu.
+
+Znacznik „Do personalizacji” (`PersonalizeBadge` w `RackStage.tsx`) zależy od `RackItem.personalizable`. Wzór powstały na produkcie `blanc` dostaje kategorię „Gotowy wzór” i nie przejmuje opisu „bez nadruku” (`toRackItem`).
+
+Nadruki stojaka powstają raz, przy publikacji, przez `renderPlacement`. Stojak nie pobiera fontów ani oryginalnych plików. Po zmianie zawartości wieszaka uruchom `npm run posters -- --rack-only`: plakaty stojaka leżą przy szablonach (`public/templates/rack-*.webp`).
+
+**Panel wieszaka (narzędzie testowe):** uruchom `npm run dev` i otwórz `http://localhost:3000/rack-manager`, link jest też na stronie głównej. Stamtąd projekt z „Moich projektów” trafia na wieszak, a przyciski pozwalają go zaktualizować, zdjąć i przesunąć. Projekty są w bazie przeglądarki, więc panel widzi tylko te zapisane w tej przeglądarce i pod tym adresem. Przycisk „Stwórz nowy projekt” otwiera edytor czystej koszulki. Publikacja dla innych: `npm run posters -- --rack-only`, commit `public/templates`, wdrożenie. **Przed commitem obejrzyj ten katalog:** wszystko w nim będzie publiczne, a usunięcie pliku z historii po wysłaniu jest trudne.
+
+Panel nie ma logowania, więc strona (`app/rack-manager`) i trasa (`app/api/dev/rack`) odpowiadają 404 poza `next dev`, a zapis wymaga adresu lokalnego i zgodnego nagłówka `Origin` (`server/templates/devGuard.ts`). Zapis robi `server/templates/rackPublisher.ts`: nazwy plików nadaje serwer, a `rack.json` zmienia się jako ostatni. Nadruki powstają w przeglądarce (`features/studio/publishTemplate.ts`), bo tam są fonty i kompozytor na prawdziwym płótnie.
+
+Wieszak sam dobiera promień do liczby koszulek (`rackLayout.ts`).
+
+**Testowy wieszak:** `public/templates-test`, siedem wzorów z katalogu, a z czystą koszulką osiem. Testy e2e wybierają go przez `RACK_TEMPLATES_DIR` w `playwright.config.ts`, a `rack.spec` zakłada jego zawartość. Po zmianie wzorów w katalogu albo formatu szablonu odtwórz go przez `npm run rack:fixture`, a plakaty przez `$env:RACK_TEMPLATES_DIR='templates-test'; npm run posters -- --rack-only`. Tego katalogu nie ma sensu ręcznie edytować.
 
 ### Kolor koszulki
 
@@ -189,6 +211,12 @@ Czego użyć: `renderPlacement` działa w Node przez `@napi-rs/canvas` (`tests/h
 | `git stash` lub zapis mogą zmienić końce linii na CRLF | W skryptach zmian nie dopasowuj fragmentów wielowierszowych wprost |
 | Uśpienie komputera psuje długie testy | Po błędzie sprawdź dziennik zasilania i powtórz test |
 | Serwer `npm run dev` użytkownika blokuje drugi na tym projekcie | Do kontroli używaj portu 3000, testy e2e mają port 3100 |
+| Playwright ma `reuseExistingServer: true`: jeśli coś już słucha na porcie 3100, testy idą przeciw temu serwerowi, bez budowania i bez `RACK_TEMPLATES_DIR` | Przed `test:e2e` sprawdź, czy port jest wolny, a po przebiegu, czy `.next/BUILD_ID` jest nowy. Zdarzyło się: 20 pozornych błędów przez cudzy serwer |
+| `check:gpu` i `perf` mierzą to, co akurat wisi na wieszaku | Do porównywalnych pomiarów uruchom serwer z testowym wieszakiem: `$env:RACK_TEMPLATES_DIR='templates-test'; npm run dev` |
+| Na Windowsie `next dev` blokuje plik z `public/`, który strona przed chwilą pobrała (`EBUSY`), nieraz na dłużej | Po zapisie `rackPublisher` nie traktuje tego jako błędu, a nieużywane pliki usuwa przy kolejnej zmianie wieszaka. Testy nie mogą zakładać natychmiastowego usunięcia takiego pliku |
+| Plakat stojaka znika po każdej zmianie w panelu, a konsola zgłasza 404 | To celowe, bo stary plakat pokazywałby inny układ. Przed wdrożeniem uruchom `npm run posters -- --rack-only` |
+| Stan w `public/templates` to pliki właściciela, które zmieniają się podczas pracy | Do commitów dodawaj pliki po nazwach i oglądaj nowe wzory. Testy nie mogą zależeć od tego katalogu |
+| Pełny scenariusz panelu nie działa na wersji zbudowanej, a Next pozwala na jeden serwer dev w katalogu | Zatrzymaj `npm run dev`, potem `$env:RACK_TEMPLATES_DIR='templates-e2e'; npx next dev -p 3100` i `$env:RACK_MANAGER_E2E='1'; npx playwright test rack-manager --project=desktop` |
 
 ## 5. Jak testować
 
@@ -206,13 +234,15 @@ Czego użyć: `renderPlacement` działa w Node przez `@napi-rs/canvas` (`tests/h
 | `unit/editing`, `layers`, `groupTransform`, `studio` | Komendy, geometria, historia, zaznaczenie, blokada |
 | `unit/imageRules`, `library`, `catalog` | Pliki, biblioteka, dane produktów |
 | `unit/migrate`, `projectName`, `projectRepository`, `createId` | Zapis, migracje, uprawnienia |
-| `unit/rackLayout`, `rackInteraction`, `cameraFlight` | Ruch i kamera |
-| `e2e/home`, `rack` | Strona główna i wieszak |
+| `unit/rackLayout`, `rackInteraction`, `cameraFlight` | Ruch, oglądanie zdjętej koszulki i kamera |
+| `unit/rackTemplates`, `rackPublisher` | Format wieszaka, czysta koszulka, zapis plików, blokada panelu |
+| `e2e/home`, `rack` | Strona główna, wieszak, znacznik personalizacji, obracanie i zmiana koloru |
+| `e2e/rack-manager` | Na wersji zbudowanej panelu nie ma. Pełny scenariusz tylko z `RACK_MANAGER_E2E=1`, patrz rozdział 4 |
 | `e2e/garment`, `compositor-parity` | Kalibracja nadruku, kolor, zgodność z serwerem |
 | `e2e/studio`, `viewport-drag`, `images`, `layers`, `group-transform`, `library` | Edytor |
 | `e2e/drafts`, `projects`, `export` | Zapis, projekty, eksport |
 
-Około połowa testów e2e jest pomijana w każdym przebiegu, bo dotyczy tylko jednego z profili `desktop` lub `mobile`. To normalne. Liczby z ostatniego pełnego przebiegu są w historii prac i mogą się zmieniać: 231 jednostkowych, 143 e2e zaliczone, 0 błędów.
+Około połowa testów e2e jest pomijana w każdym przebiegu, bo dotyczy tylko jednego z profili `desktop` lub `mobile`. To normalne. Liczby z ostatniego przebiegu są w `docs/STATUS.md`, w sekcji „Wieszak z własnych wzorów”.
 
 ### Test na telefonie
 
