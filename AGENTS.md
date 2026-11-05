@@ -24,6 +24,7 @@ Ten plik jest mapą. Treść żyje w plikach poniżej i tam ją aktualizuj, zami
 | Specyfikacje funkcji i etapów | [.ai/specs/](.ai/specs/README.md) |
 | Dokumentacja przebiegów: plan i przekazanie pracy wieloetapowej | [.ai/runs/](.ai/runs/README.md) |
 | Wnioski o sposobie pracy z wcześniejszych zadań | [.ai/lessons.md](.ai/lessons.md) |
+| Skille `om-*` współdzielone z projektem: pochodzenie, aktualizacja, nadpisania | [.claude/skills/README.md](.claude/skills/README.md) |
 
 `.ai/cezar/` to lokalne dane narzędzia cezar, ignorowane przez gita. Nie jest źródłem wiedzy o projekcie.
 
