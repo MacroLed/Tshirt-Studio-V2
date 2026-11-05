@@ -1,6 +1,12 @@
 # Lokalne dane narzędzia cezar (zawierają m.in. launch-key)
 .ai/cezar/
 
+# Lokalny stan skilli om-* (wyniki QA, dane środowiska testowego, harmonogram automerge)
+.ai/qa/artifacts_*/
+.ai/qa/test-env.json
+.ai/qa/test-env.env
+.ai/meta/
+
 # Zależności i build
 node_modules/
 .next/

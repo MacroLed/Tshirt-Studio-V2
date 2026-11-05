@@ -19,6 +19,7 @@ Ten plik jest mapą. Treść żyje w plikach poniżej i tam ją aktualizuj, zami
 | Zasady nie do złamania, mapa kodu, przepisy, pułapki techniczne, testy | [docs/PRZEWODNIK-ZMIAN.md](docs/PRZEWODNIK-ZMIAN.md) |
 | Standardy kodowania, techniki inżynierskie, znane odstępstwa (**wymagane**) | [docs/STANDARDY.md](docs/STANDARDY.md) |
 | Jak oceniać zmiany w przeglądzie kodu | [CODE_REVIEW.md](CODE_REVIEW.md) |
+| Przebieg od zgłoszenia do scalenia, etykiety, bramka QA, konfiguracja skilli `om-*` | [SDLC.md](SDLC.md), [.ai/agentic.config.json](.ai/agentic.config.json) |
 | Uzasadnienia, architektura, plan docelowy | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Specyfikacje funkcji i etapów | [.ai/specs/](.ai/specs/README.md) |
 | Dokumentacja przebiegów: plan i przekazanie pracy wieloetapowej | [.ai/runs/](.ai/runs/README.md) |
