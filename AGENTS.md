@@ -17,6 +17,8 @@ Ten plik jest mapą. Treść żyje w plikach poniżej i tam ją aktualizuj, zami
 | Uruchomienie, lista poleceń | [README.md](README.md) |
 | Stan prac, otwarte problemy, decyzje właściciela | [docs/STATUS.md](docs/STATUS.md) |
 | Zasady nie do złamania, mapa kodu, przepisy, pułapki techniczne, testy | [docs/PRZEWODNIK-ZMIAN.md](docs/PRZEWODNIK-ZMIAN.md) |
+| Standardy kodowania, techniki inżynierskie, znane odstępstwa (**wymagane**) | [docs/STANDARDY.md](docs/STANDARDY.md) |
+| Jak oceniać zmiany w przeglądzie kodu | [CODE_REVIEW.md](CODE_REVIEW.md) |
 | Uzasadnienia, architektura, plan docelowy | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Specyfikacje funkcji i etapów | [.ai/specs/](.ai/specs/README.md) |
 | Dokumentacja przebiegów: plan i przekazanie pracy wieloetapowej | [.ai/runs/](.ai/runs/README.md) |
@@ -26,11 +28,24 @@ Ten plik jest mapą. Treść żyje w plikach poniżej i tam ją aktualizuj, zami
 
 ## Przed zmianą
 
-1. Przeczytaj `README.md`, `docs/STATUS.md`, `docs/PRZEWODNIK-ZMIAN.md` i `.ai/lessons.md`.
+1. Przeczytaj `README.md`, `docs/STATUS.md`, `docs/PRZEWODNIK-ZMIAN.md`, `docs/STANDARDY.md` i `.ai/lessons.md`.
 2. Sprawdź, czy temat ma specyfikację w `.ai/specs/` albo rozpoczęty przebieg w `.ai/runs/`. Wznów go, zamiast zaczynać od nowa.
 3. Dokumenty opisują stan z chwili pisania. Stan gita i repozytorium sprawdzaj poleceniami.
 4. Przed pisaniem kodu Next.js przeczytaj właściwy przewodnik z `node_modules/next/dist/docs/`.
 5. Stosuj zasady pracy z [rozdziału 16 specyfikacji](.ai/specs/2026-11-02-specyfikacja-pierwotna.md#16-zasady-pracy-dla-claude-code).
+
+## Standardy kodowania są wymagane
+
+Reguły z [docs/STANDARDY.md](docs/STANDARDY.md) obowiązują przy każdej zmianie w kodzie, testach i skryptach. Zmiana, która je łamie, nie jest gotowa.
+
+- Przed pisaniem kodu przeczytaj rozdziały dotyczące zmienianego obszaru.
+- Regułę „Obowiązuje” stosujesz zawsze, a regułę „Cel” w każdym nowym i zmienianym kodzie.
+- Jeśli nie możesz spełnić reguły, zatrzymaj się i zapytaj właściciela. Odstępstwo wymaga jego zgody i wpisu z uzasadnieniem w rozdziale 11.
+- Przed zgłoszeniem końca pracy sprawdź swój diff względem [CODE_REVIEW.md](CODE_REVIEW.md).
+
+## Przegląd kodu
+
+Każdy przegląd kodu, także agenta i narzędzi takich jak `/code-review` czy `om-code-review`, sprawdza zmianę względem `docs/STANDARDY.md` i ocenia ją według [CODE_REVIEW.md](CODE_REVIEW.md). Zgłoszenie podaje złamaną regułę.
 
 ## Uruchamianie
 
@@ -55,6 +70,7 @@ Pełna tabela: [przewodnik, rozdział 5](docs/PRZEWODNIK-ZMIAN.md#5-jak-testowa�
 | Stan, historia, otwarte problemy | `docs/STATUS.md`, zawsze |
 | Nowy przepis lub pułapka techniczna | `docs/PRZEWODNIK-ZMIAN.md` |
 | Decyzja architektoniczna | `ARCHITECTURE.md` |
+| Nowa konwencja lub poprawione odstępstwo | `docs/STANDARDY.md` |
 | Wniosek o sposobie pracy | `.ai/lessons.md` |
 | Praca wieloetapowa | `HANDOFF.md` w folderze przebiegu |
 

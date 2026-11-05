@@ -35,6 +35,7 @@ Stan na 2026-11-05, gałąź `etap-1`. Aktualizuj ten plik po każdym ukończony
 | `3af246e` | Dokumentacja: README, STATUS, przewodnik zmian, plan serwera, korekta ARCHITECTURE |
 | commit „Wieszak z własnych wzorów” | Stojak na gotowych wzorach właściciela, panel `/rack-manager`, czysta koszulka do personalizacji, oglądanie wzorów. Szczegóły w sekcji „Wieszak z własnych wzorów” |
 | commit „Instrukcje dla agentów” | `AGENTS.md`, `CLAUDE.md`, `.ai/specs`, `.ai/runs`, `.ai/lessons.md`, korekta nieaktualnych informacji o repozytorium, pierwotna specyfikacja w `.ai/specs` |
+| commit „Standardy kodowania” | `docs/STANDARDY.md`: reguły, znane odstępstwa i plan wdrożenia (kroki 1–5 niezaczęte). Wymagane przez `AGENTS.md`, oceniane według `CODE_REVIEW.md` |
 
 Sprawdź aktualny stan przez `git log --oneline` i `git status`.
 
@@ -210,4 +211,4 @@ Numery punktów odnoszą się do [pierwotnej specyfikacji](../.ai/specs/2026-11-
 
 ## Przed sprzedażą
 
-Do potwierdzenia z prawnikiem i księgową: wyjątek od prawa odstąpienia dla towarów na zamówienie, prawa do wgrywanych grafik i moderacja, RODO, VAT/OSS, podobieństwo znaków z kategorii Logo do zarejestrowanych znaków towarowych.
+Do potwierdzenia z prawnikiem i księgową: wyjątek od prawa odstąpienia dla towarów na zamówienie, prawa do wgrywanych grafik i moderacja, RODO, VAT/OSS, podobieństwo znaków z kategorii Logo do zarejestrowanych znaków towarowych, Europejski Akt o Dostępności (czy i w jakim zakresie obejmuje sklep).
