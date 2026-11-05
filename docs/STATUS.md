@@ -35,7 +35,7 @@ Stan na 2026-11-05, gałąź `etap-1`. Aktualizuj ten plik po każdym ukończony
 | `3af246e` | Dokumentacja: README, STATUS, przewodnik zmian, plan serwera, korekta ARCHITECTURE |
 | commit „Wieszak z własnych wzorów” | Stojak na gotowych wzorach właściciela, panel `/rack-manager`, czysta koszulka do personalizacji, oglądanie wzorów. Szczegóły w sekcji „Wieszak z własnych wzorów” |
 | commit „Instrukcje dla agentów” | `AGENTS.md`, `CLAUDE.md`, `.ai/specs`, `.ai/runs`, `.ai/lessons.md`, korekta nieaktualnych informacji o repozytorium, pierwotna specyfikacja w `.ai/specs` |
-| commit „Standardy kodowania” | `docs/STANDARDY.md`: reguły, znane odstępstwa i plan wdrożenia (kroki 1–5 niezaczęte). Wymagane przez `AGENTS.md`, oceniane według `CODE_REVIEW.md` |
+| commit „Standardy kodowania” | `docs/STANDARDY.md`: reguły, znane odstępstwa i plan wdrożenia (kroki 1–5 niezaczęte). Wymagane przez `AGENTS.md`, oceniane według `CODE_REVIEW.md`, którego wagi mają pierwszeństwo przed domyślnymi wagami narzędzi przeglądu |
 
 Sprawdź aktualny stan przez `git log --oneline` i `git status`.
 

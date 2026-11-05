@@ -15,6 +15,8 @@ Każdy przegląd zmiany w tym repozytorium, wykonany przez człowieka lub agenta
 
 Blocker albo major bez uzgodnionego odstępstwa oznacza prośbę o zmiany. Minor nie blokuje zmiany.
 
+Dla reguł z tych dwóch dokumentów ta tabela ma pierwszeństwo przed domyślnymi wagami narzędzi przeglądu. Na przykład `om-code-review` uznaje naruszenie konwencji za minor, a tutaj złamanie reguły ze `STANDARDY` to co najmniej major, poza wyjątkami z tabeli.
+
 ## Zasady
 
 - Przy każdym zgłoszeniu podaj regułę: dokument i rozdział, np. `STANDARDY, rozdział 6`.
