@@ -34,7 +34,7 @@ Stan na 2026-11-05, gałąź `etap-1`. Aktualizuj ten plik po każdym ukończony
 | `47cb456` | ETAP 4, krok 3: eksport podglądu, przygotowanie pod serwer, dopracowanie na telefon |
 | `3af246e` | Dokumentacja: README, STATUS, przewodnik zmian, plan serwera, korekta ARCHITECTURE |
 | commit „Wieszak z własnych wzorów” | Stojak na gotowych wzorach właściciela, panel `/rack-manager`, czysta koszulka do personalizacji, oglądanie wzorów. Szczegóły w sekcji „Wieszak z własnych wzorów” |
-| commit „Instrukcje dla agentów” | `AGENTS.md`, `CLAUDE.md`, `.ai/specs`, `.ai/runs`, `.ai/lessons.md`, korekta nieaktualnych informacji o repozytorium |
+| commit „Instrukcje dla agentów” | `AGENTS.md`, `CLAUDE.md`, `.ai/specs`, `.ai/runs`, `.ai/lessons.md`, korekta nieaktualnych informacji o repozytorium, pierwotna specyfikacja w `.ai/specs` |
 
 Sprawdź aktualny stan przez `git log --oneline` i `git status`.
 
@@ -85,6 +85,8 @@ Właściciel chciał zastąpić przykładowe koszulki własnymi projektami, z mo
 | Fizyczny telefon, Safari, Firefox | **Nie sprawdzono** |
 
 ## Specyfikacja punkt po punkcie
+
+Numery punktów odnoszą się do [pierwotnej specyfikacji](../.ai/specs/2026-11-02-specyfikacja-pierwotna.md).
 
 ### 3. Struktura aplikacji
 
@@ -169,7 +171,6 @@ Właściciel chciał zastąpić przykładowe koszulki własnymi projektami, z mo
 |---|---|---|
 | Brak testu na fizycznym telefonie | **Wysoka** | Główna niewiadoma: pamięć przy dużych zdjęciach, nagrzewanie, Safari. Instrukcja: przewodnik, „Test na telefonie” |
 | Publiczne repozytorium | **Wysoka** | `MacroLed/Tshirt-Studio-V2` jest publiczne, a `etap-1` jest wysłana (sprawdzone 2026-11-05). Każdy commit jest publikacją. Historii commitów nie przejrzano pod kątem wrażliwych plików |
-| Pierwotnej specyfikacji nie ma w repozytorium | Średnia | Punkty specyfikacji w tym pliku i w `ARCHITECTURE.md` nie mają do czego prowadzić. Miejsce na nią: `.ai/specs/` |
 | Prawdziwy wieszak poza repozytorium | **Wysoka przed wdrożeniem** | `public/templates` celowo nie jest w commicie: dwa wzory to zrzuty dokumentów, które nie powinny być publiczne. Bez tego katalogu wdrożona strona pokaże samą czystą koszulkę. Patrz „Czeka na decyzję właściciela” |
 | Safari i Firefox nietestowane | Średnia | W Safari możliwe różnice w tekście, rysowaniu SVG na płótnie i pobieraniu plików |
 | Dwie karty tego samego projektu | Średnia | Wygrywa ostatni zapis, a projekt usunięty w jednej karcie wraca po zapisie w drugiej |

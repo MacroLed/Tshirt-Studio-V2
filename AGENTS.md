@@ -30,6 +30,7 @@ Ten plik jest mapą. Treść żyje w plikach poniżej i tam ją aktualizuj, zami
 2. Sprawdź, czy temat ma specyfikację w `.ai/specs/` albo rozpoczęty przebieg w `.ai/runs/`. Wznów go, zamiast zaczynać od nowa.
 3. Dokumenty opisują stan z chwili pisania. Stan gita i repozytorium sprawdzaj poleceniami.
 4. Przed pisaniem kodu Next.js przeczytaj właściwy przewodnik z `node_modules/next/dist/docs/`.
+5. Stosuj zasady pracy z [rozdziału 16 specyfikacji](.ai/specs/2026-11-02-specyfikacja-pierwotna.md#16-zasady-pracy-dla-claude-code).
 
 ## Uruchamianie
 

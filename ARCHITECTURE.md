@@ -4,7 +4,7 @@
 
 Celem jest działająca platforma do projektowania i sprzedaży koszulek, zbudowana wokół doświadczenia 3D, a nie sklep z konfiguratorem. Ten dokument opisuje architekturę i decyzje. Powstał w ETAPIE 0 (zatwierdzony 2026-11-02) i jest aktualizowany, gdy wdrożenie odbiega od planu.
 
-**Gdzie co znaleźć:** stan prac względem planu: [docs/STATUS.md](docs/STATUS.md), jak coś zmienić: [docs/PRZEWODNIK-ZMIAN.md](docs/PRZEWODNIK-ZMIAN.md), uruchomienie: [README.md](README.md).
+**Gdzie co znaleźć:** stan prac względem planu: [docs/STATUS.md](docs/STATUS.md), jak coś zmienić: [docs/PRZEWODNIK-ZMIAN.md](docs/PRZEWODNIK-ZMIAN.md), uruchomienie: [README.md](README.md), pierwotna specyfikacja: [.ai/specs/2026-11-02-specyfikacja-pierwotna.md](.ai/specs/2026-11-02-specyfikacja-pierwotna.md).
 
 **Jak czytać:** elementy oznaczone *(plan)* jeszcze nie istnieją. Reszta opisuje obecny kod. Stan na 2026-11-03: ETAPY 0–3 i lokalna część ETAPU 4 wdrożone, konta i serwer odłożone.
 

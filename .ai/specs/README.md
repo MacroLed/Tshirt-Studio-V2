@@ -6,7 +6,7 @@ Specyfikacje nowych funkcji i etapów, pisane przed kodem. Poprawki błędów ic
 
 | Dokument | Rola |
 |---|---|
-| Pierwotna specyfikacja aplikacji | **Nie ma jej jeszcze w repozytorium.** Na jej punkty powołują się [STATUS.md](../../docs/STATUS.md) i [ARCHITECTURE.md](../../ARCHITECTURE.md). Odstępstwa są opisane w tych dwóch plikach |
+| [2026-11-02-specyfikacja-pierwotna.md](2026-11-02-specyfikacja-pierwotna.md) | Pierwotna specyfikacja aplikacji, dokument historyczny. Na jej punkty powołują się [STATUS.md](../../docs/STATUS.md) i [ARCHITECTURE.md](../../ARCHITECTURE.md). Odstępstwa są opisane w tych dwóch plikach |
 | [docs/ETAP-4-SERWER.md](../../docs/ETAP-4-SERWER.md) | Odłożony plan kont i zapisu na serwerze. Zostaje w `docs/`, bo linkują do niego inne pliki |
 
 Stan prac jest w `docs/STATUS.md`, a decyzje techniczne w `ARCHITECTURE.md`. Tutaj nie powtarzamy ani jednego, ani drugiego.
