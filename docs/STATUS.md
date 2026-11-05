@@ -37,6 +37,7 @@ Stan na 2026-11-05, gałąź `etap-1`. Aktualizuj ten plik po każdym ukończony
 | commit „Instrukcje dla agentów” | `AGENTS.md`, `CLAUDE.md`, `.ai/specs`, `.ai/runs`, `.ai/lessons.md`, korekta nieaktualnych informacji o repozytorium, pierwotna specyfikacja w `.ai/specs` |
 | commit „Standardy kodowania” | `docs/STANDARDY.md`: reguły, znane odstępstwa i plan wdrożenia (kroki 1–5 niezaczęte). Wymagane przez `AGENTS.md`, oceniane według `CODE_REVIEW.md`, którego wagi mają pierwszeństwo przed domyślnymi wagami narzędzi przeglądu |
 | commit „Agenci: konfiguracja pipeline'u PR” | `.ai/agentic.config.json`, `SDLC.md`, deskryptory `github` i `playwright`, etykiety na GitHubie. Automerge tylko przygotowuje PR. Do zmiany po wprowadzeniu CI: `ci.maxWaitMinutes` (dziś 0). Skille wymagają `jq` na komputerze |
+| commit „Agenci: skille om-* w repozytorium” | 74 skille z `open-mercato/skills` w `.claude/skills`, przypięte do commita. Linter pomija ten katalog. Skille osobiste o tej samej nazwie mają pierwszeństwo, więc zmiana kopii projektu nie działa u kogoś, kto ma wersję w `~/.claude/skills` |
 
 Sprawdź aktualny stan przez `git log --oneline` i `git status`.
 

@@ -63,6 +63,7 @@ Na stojaku zawsze wisi czysta koszulka z przyciskiem „Personalizuj”, a za ni
 | [.ai/specs/](.ai/specs/README.md) | Specyfikacje nowych funkcji i etapów |
 | [.ai/runs/](.ai/runs/README.md) | Notatki z pracy wieloetapowej |
 | [.ai/lessons.md](.ai/lessons.md) | Wnioski o sposobie pracy agentów |
+| [.claude/skills/README.md](.claude/skills/README.md) | Skille `om-*` w repozytorium: skąd są i jak je aktualizować |
 
 ## Zasady pracy
 

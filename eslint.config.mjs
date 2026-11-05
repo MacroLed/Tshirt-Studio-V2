@@ -5,7 +5,7 @@ const config = [
   ...nextVitals,
   ...nextTypescript,
   {
-    ignores: ['.ai/**', '.next/**', 'node_modules/**','assets-src/**', 'next-env.d.ts', 'playwright-report/**', 'test-results/**'],
+    ignores: ['.ai/**', '.claude/**', '.next/**', 'node_modules/**','assets-src/**', 'next-env.d.ts', 'playwright-report/**', 'test-results/**'],
   },
   {
     // core/ to czysty TypeScript: musi działać w przeglądarce, na serwerze i w testach.

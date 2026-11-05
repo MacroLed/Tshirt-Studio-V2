@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Skille agentów to nie interfejs: bez tego ich pliki powiększają CSS aplikacji. */
+@source not "../../.claude";
 
 /*
  * Tokeny systemu projektowego. Kolory nawiązują do neutralnego tła studia z renderów,
