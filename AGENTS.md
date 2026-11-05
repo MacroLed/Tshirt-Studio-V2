@@ -8,6 +8,61 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Dokumentacja projektu
+## Gdzie czego szukać
 
-Przed zmianami przeczytaj `README.md`, `docs/STATUS.md` (stan i otwarte problemy) oraz `docs/PRZEWODNIK-ZMIAN.md` (zasady, przepisy, pułapki). Po ukończeniu kroku zaktualizuj `docs/STATUS.md`. Komunikacja i komentarze po polsku, identyfikatory po angielsku.
+Ten plik jest mapą. Treść żyje w plikach poniżej i tam ją aktualizuj, zamiast kopiować tutaj.
+
+| Czego szukasz | Gdzie |
+|---|---|
+| Uruchomienie, lista poleceń | [README.md](README.md) |
+| Stan prac, otwarte problemy, decyzje właściciela | [docs/STATUS.md](docs/STATUS.md) |
+| Zasady nie do złamania, mapa kodu, przepisy, pułapki techniczne, testy | [docs/PRZEWODNIK-ZMIAN.md](docs/PRZEWODNIK-ZMIAN.md) |
+| Uzasadnienia, architektura, plan docelowy | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Specyfikacje funkcji i etapów | [.ai/specs/](.ai/specs/README.md) |
+| Dokumentacja przebiegów: plan i przekazanie pracy wieloetapowej | [.ai/runs/](.ai/runs/README.md) |
+| Wnioski o sposobie pracy z wcześniejszych zadań | [.ai/lessons.md](.ai/lessons.md) |
+
+`.ai/cezar/` to lokalne dane narzędzia cezar, ignorowane przez gita. Nie jest źródłem wiedzy o projekcie.
+
+## Przed zmianą
+
+1. Przeczytaj `README.md`, `docs/STATUS.md`, `docs/PRZEWODNIK-ZMIAN.md` i `.ai/lessons.md`.
+2. Sprawdź, czy temat ma specyfikację w `.ai/specs/` albo rozpoczęty przebieg w `.ai/runs/`. Wznów go, zamiast zaczynać od nowa.
+3. Dokumenty opisują stan z chwili pisania. Stan gita i repozytorium sprawdzaj poleceniami.
+4. Przed pisaniem kodu Next.js przeczytaj właściwy przewodnik z `node_modules/next/dist/docs/`.
+
+## Uruchamianie
+
+Konfiguracja `.env` nie jest potrzebna. Nowy worktree nie ma `node_modules`, więc zacznij od `npm install`. Wersja Node: `.nvmrc` (24), lokalnie sprawdzane też na 25.
+
+| Co | Polecenie |
+|---|---|
+| Serwer deweloperski, port 3000 | `npm run dev` |
+| Każda zmiana | `npm run typecheck`, `npm run lint`, `npm test` |
+| Edytor, interfejs, zapis | Do tego `npm run test:e2e` (własny serwer na porcie 3100, ok. 18 min) |
+| 3D, tekstury, kamera | Do tego `npm run check:gpu -- http://localhost:3000` |
+
+Pełna tabela: [przewodnik, rozdział 5](docs/PRZEWODNIK-ZMIAN.md#5-jak-testować). Repozytorium nie ma CI, więc sprawdzenia uruchamiasz lokalnie.
+
+- Przed `test:e2e` sprawdź, czy port 3100 jest wolny. Playwright użyje serwera, który już tam działa, zamiast zbudować aplikację.
+- Next pozwala na jeden serwer dev w katalogu. Serwera właściciela nie zatrzymuj bez pytania.
+
+## Po ukończeniu kroku
+
+| Co się zmieniło | Gdzie to zapisać |
+|---|---|
+| Stan, historia, otwarte problemy | `docs/STATUS.md`, zawsze |
+| Nowy przepis lub pułapka techniczna | `docs/PRZEWODNIK-ZMIAN.md` |
+| Decyzja architektoniczna | `ARCHITECTURE.md` |
+| Wniosek o sposobie pracy | `.ai/lessons.md` |
+| Praca wieloetapowa | `HANDOFF.md` w folderze przebiegu |
+
+## Git i publikacja
+
+- Repozytorium jest **publiczne**. Każdy commit traktuj jak publikację: bez sekretów, danych osobowych i informacji handlowych.
+- Gałąź bazowa to `etap-1`. Bez polecenia właściciela nie scalaj do niej i nie wysyłaj jej.
+- Pliki do commita dodawaj po nazwach. `public/templates` to pliki właściciela i celowo nie ma ich w repozytorium: nie dodawaj ich bez jego decyzji.
+
+## Język
+
+Komunikacja, komentarze i dokumentacja po polsku, identyfikatory po angielsku.

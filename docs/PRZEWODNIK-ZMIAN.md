@@ -255,4 +255,4 @@ W tym trybie pierwsze ładowanie jest wolne. Czas ładowania mierz na wersji zbu
 
 ## 6. Dokumentacja
 
-Po ukończeniu kroku zaktualizuj: `docs/STATUS.md` (stan, historia, problemy), ten przewodnik, jeśli pojawił się nowy przepis lub pułapka, oraz `ARCHITECTURE.md`, jeśli zmieniła się decyzja. `AGENTS.md` ma blok generowany przez `next dev`: nie usuwaj go.
+Po ukończeniu kroku zaktualizuj: `docs/STATUS.md` (stan, historia, problemy), ten przewodnik, jeśli pojawił się nowy przepis lub pułapka, oraz `ARCHITECTURE.md`, jeśli zmieniła się decyzja. Wnioski o sposobie pracy, a nie pułapki techniczne, trafiają do [.ai/lessons.md](../.ai/lessons.md). `AGENTS.md` ma blok generowany przez `next dev`: nie usuwaj go.

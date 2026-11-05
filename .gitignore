@@ -1,3 +1,6 @@
+# Lokalne dane narzędzia cezar (zawierają m.in. launch-key)
+.ai/cezar/
+
 # Zależności i build
 node_modules/
 .next/
