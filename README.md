@@ -7,7 +7,7 @@ Platforma do projektowania i sprzedaży koszulek, zbudowana wokół doświadczen
 ## Uruchomienie
 
 ```powershell
-cd "C:\Users\macie\Desktop\projekt stronki"
+cd "C:\Users\macie\cezar\projects\Tshirt-Studio-V2"
 npm install        # tylko za pierwszym razem i po zmianie zależności
 npm run dev
 ```
@@ -54,10 +54,15 @@ Na stojaku zawsze wisi czysta koszulka z przyciskiem „Personalizuj”, a za ni
 |---|---|
 | [docs/STATUS.md](docs/STATUS.md) | Co jest zrobione względem specyfikacji, czego brakuje, otwarte problemy i decyzje |
 | [docs/PRZEWODNIK-ZMIAN.md](docs/PRZEWODNIK-ZMIAN.md) | Jak coś zmienić: pliki, kolejność kroków, zasady, których nie wolno złamać |
+| [docs/STANDARDY.md](docs/STANDARDY.md) | Jak piszemy kod: standardy, techniki, znane odstępstwa i plan ich wdrożenia |
+| [CODE_REVIEW.md](CODE_REVIEW.md) | Jak oceniać zmiany w przeglądzie kodu |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Dlaczego tak: architektura, decyzje techniczne, plan docelowy |
 | [docs/ETAP-4-SERWER.md](docs/ETAP-4-SERWER.md) | Plan odłożonych kont i zapisu na serwerze |
 | [docs/RAPORT-ETAP-1.md](docs/RAPORT-ETAP-1.md) | Pomiary i ustalenia z ETAPU 1 (stan historyczny) |
-| [AGENTS.md](AGENTS.md) | Zasady dla asystentów AI pracujących nad kodem |
+| [AGENTS.md](AGENTS.md) | Zasady dla asystentów AI pracujących nad kodem. [CLAUDE.md](CLAUDE.md) tylko do niego odsyła |
+| [.ai/specs/](.ai/specs/README.md) | Specyfikacje nowych funkcji i etapów |
+| [.ai/runs/](.ai/runs/README.md) | Notatki z pracy wieloetapowej |
+| [.ai/lessons.md](.ai/lessons.md) | Wnioski o sposobie pracy agentów |
 
 ## Zasady pracy
 

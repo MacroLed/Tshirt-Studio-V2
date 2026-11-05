@@ -1,6 +1,6 @@
 # Status projektu względem planu
 
-Stan na 2026-11-04, gałąź `etap-1`. Aktualizuj ten plik po każdym ukończonym kroku.
+Stan na 2026-11-05, gałąź `etap-1`. Aktualizuj ten plik po każdym ukończonym kroku.
 
 **Oznaczenia:** ✅ działa i ma testy, 🟡 częściowo (opis obok), ⬜ nie zaczęte, 🔒 wymaga decyzji lub zasobu właściciela, ➖ świadomie zmienione względem specyfikacji.
 
@@ -34,6 +34,8 @@ Stan na 2026-11-04, gałąź `etap-1`. Aktualizuj ten plik po każdym ukończony
 | `47cb456` | ETAP 4, krok 3: eksport podglądu, przygotowanie pod serwer, dopracowanie na telefon |
 | `3af246e` | Dokumentacja: README, STATUS, przewodnik zmian, plan serwera, korekta ARCHITECTURE |
 | commit „Wieszak z własnych wzorów” | Stojak na gotowych wzorach właściciela, panel `/rack-manager`, czysta koszulka do personalizacji, oglądanie wzorów. Szczegóły w sekcji „Wieszak z własnych wzorów” |
+| commit „Instrukcje dla agentów” | `AGENTS.md`, `CLAUDE.md`, `.ai/specs`, `.ai/runs`, `.ai/lessons.md`, korekta nieaktualnych informacji o repozytorium, pierwotna specyfikacja w `.ai/specs` |
+| commit „Standardy kodowania” | `docs/STANDARDY.md`: reguły, znane odstępstwa i plan wdrożenia (kroki 1–5 niezaczęte). Wymagane przez `AGENTS.md`, oceniane według `CODE_REVIEW.md` |
 
 Sprawdź aktualny stan przez `git log --oneline` i `git status`.
 
@@ -84,6 +86,8 @@ Właściciel chciał zastąpić przykładowe koszulki własnymi projektami, z mo
 | Fizyczny telefon, Safari, Firefox | **Nie sprawdzono** |
 
 ## Specyfikacja punkt po punkcie
+
+Numery punktów odnoszą się do [pierwotnej specyfikacji](../.ai/specs/2026-11-02-specyfikacja-pierwotna.md).
 
 ### 3. Struktura aplikacji
 
@@ -167,7 +171,7 @@ Właściciel chciał zastąpić przykładowe koszulki własnymi projektami, z mo
 | Problem | Waga | Co wiadomo |
 |---|---|---|
 | Brak testu na fizycznym telefonie | **Wysoka** | Główna niewiadoma: pamięć przy dużych zdjęciach, nagrzewanie, Safari. Instrukcja: przewodnik, „Test na telefonie” |
-| Praca bez zdalnej kopii | **Wysoka** | Repozytorium ma `origin` (GitHub, `MacroLed/tshirt-studio`), ale `git branch -r` pokazuje tylko `origin/main`, więc gałąź `etap-1` nie jest wysłana. Awaria dysku oznacza utratę pracy z tej gałęzi. Lokalna kopia zip jest na tym samym dysku |
+| Publiczne repozytorium | **Wysoka** | `MacroLed/Tshirt-Studio-V2` jest publiczne, a `etap-1` jest wysłana (sprawdzone 2026-11-05). Każdy commit jest publikacją. Historii commitów nie przejrzano pod kątem wrażliwych plików |
 | Prawdziwy wieszak poza repozytorium | **Wysoka przed wdrożeniem** | `public/templates` celowo nie jest w commicie: dwa wzory to zrzuty dokumentów, które nie powinny być publiczne. Bez tego katalogu wdrożona strona pokaże samą czystą koszulkę. Patrz „Czeka na decyzję właściciela” |
 | Safari i Firefox nietestowane | Średnia | W Safari możliwe różnice w tekście, rysowaniu SVG na płótnie i pobieraniu plików |
 | Dwie karty tego samego projektu | Średnia | Wygrywa ostatni zapis, a projekt usunięty w jednej karcie wraca po zapisie w drugiej |
@@ -188,11 +192,10 @@ Właściciel chciał zastąpić przykładowe koszulki własnymi projektami, z mo
 ## Czeka na decyzję właściciela
 
 1. Podpowiedź przy kursorze na wieszaku: zostawić czy usunąć.
-2. Wysłanie gałęzi `etap-1` na GitHub. Najpierw warto sprawdzić, czy repozytorium `MacroLed/tshirt-studio` jest prywatne.
+2. Czy repozytorium `MacroLed/Tshirt-Studio-V2` ma pozostać publiczne.
 3. Kiedy wrócić do kont: projekt Supabase w UE i sposób logowania (rekomendacja: e-mail z hasłem).
-4. Katalog `.ai/cezar/` w repozytorium nie pochodzi z projektu i zawiera plik `launch-key`. Nie jest dodawany do commitów. Warto wpisać go do `.gitignore`.
-5. Które wzory z `public/templates` mają zostać opublikowane. Wzory „obraz” i „obr” to zrzuty dokumentów, a trzy pozostałe mają testowe nazwy („Blanc”, „test”). Po zdjęciu zbędnych wzorów w panelu katalog można dodać do commita.
-6. Druk zamówień gotowych wzorów: skąd brać oryginały, gdy powstanie sklep.
+4. Które wzory z `public/templates` mają zostać opublikowane. Wzory „obraz” i „obr” to zrzuty dokumentów, a trzy pozostałe mają testowe nazwy („Blanc”, „test”). Po zdjęciu zbędnych wzorów w panelu katalog można dodać do commita.
+5. Druk zamówień gotowych wzorów: skąd brać oryginały, gdy powstanie sklep.
 
 ## Zasoby tymczasowe do wymiany
 
@@ -208,4 +211,4 @@ Właściciel chciał zastąpić przykładowe koszulki własnymi projektami, z mo
 
 ## Przed sprzedażą
 
-Do potwierdzenia z prawnikiem i księgową: wyjątek od prawa odstąpienia dla towarów na zamówienie, prawa do wgrywanych grafik i moderacja, RODO, VAT/OSS, podobieństwo znaków z kategorii Logo do zarejestrowanych znaków towarowych.
+Do potwierdzenia z prawnikiem i księgową: wyjątek od prawa odstąpienia dla towarów na zamówienie, prawa do wgrywanych grafik i moderacja, RODO, VAT/OSS, podobieństwo znaków z kategorii Logo do zarejestrowanych znaków towarowych, Europejski Akt o Dostępności (czy i w jakim zakresie obejmuje sklep).

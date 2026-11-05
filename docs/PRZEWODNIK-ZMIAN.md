@@ -1,6 +1,6 @@
 # Przewodnik zmian
 
-Jak bezpiecznie modyfikować projekt: które pliki ruszyć, w jakiej kolejności i czego nie wolno złamać. Uzasadnienia decyzji są w [ARCHITECTURE.md](../ARCHITECTURE.md), a stan prac w [STATUS.md](STATUS.md). Ścieżki są względem `src/`, chyba że podano inaczej.
+Jak bezpiecznie modyfikować projekt: które pliki ruszyć, w jakiej kolejności i czego nie wolno złamać. Uzasadnienia decyzji są w [ARCHITECTURE.md](../ARCHITECTURE.md), stan prac w [STATUS.md](STATUS.md), a konwencje pisania kodu w [STANDARDY.md](STANDARDY.md). Ścieżki są względem `src/`, chyba że podano inaczej.
 
 **Next.js w tym projekcie:** wersja 16 różni się od starszych. Przed pisaniem kodu Next.js czytaj dokumentację z `node_modules/next/dist/docs/`.
 
@@ -255,4 +255,4 @@ W tym trybie pierwsze ładowanie jest wolne. Czas ładowania mierz na wersji zbu
 
 ## 6. Dokumentacja
 
-Po ukończeniu kroku zaktualizuj: `docs/STATUS.md` (stan, historia, problemy), ten przewodnik, jeśli pojawił się nowy przepis lub pułapka, oraz `ARCHITECTURE.md`, jeśli zmieniła się decyzja. `AGENTS.md` ma blok generowany przez `next dev`: nie usuwaj go.
+Po ukończeniu kroku zaktualizuj: `docs/STATUS.md` (stan, historia, problemy), ten przewodnik, jeśli pojawił się nowy przepis lub pułapka, oraz `ARCHITECTURE.md`, jeśli zmieniła się decyzja. Nowa konwencja lub poprawione odstępstwo trafia do [STANDARDY.md](STANDARDY.md). Wnioski o sposobie pracy, a nie pułapki techniczne, trafiają do [.ai/lessons.md](../.ai/lessons.md). `AGENTS.md` ma blok generowany przez `next dev`: nie usuwaj go.
